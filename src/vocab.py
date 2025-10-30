@@ -26,3 +26,20 @@ def load_vocab(path):
         itos = json.load(f)["itos"]
     stoi = {w:i for i,w in enumerate(itos)}
     return {"itos": itos, "stoi": stoi}
+
+def ID2TOK(voc):
+    itos = voc["itos"]
+    return lambda idx: itos[idx] if 0 <= idx < len(itos) else UNK
+
+def TOK2ID(voc):
+    stoi = voc["stoi"]
+    return lambda tok: stoi.get(tok, stoi.get(UNK, 0))
+
+def special_ids(voc):
+    itos = voc["itos"]
+    return {
+        "pad": itos.index(PAD),
+        "sos": itos.index(SOS),
+        "eos": itos.index(EOS),
+        "unk": itos.index(UNK),
+    }
