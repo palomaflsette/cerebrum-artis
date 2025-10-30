@@ -71,3 +71,14 @@ outputs/**
 *.pem
 *.key
 *.crt
+
+*.csv
+*.tsv
+*.parquet
+*.jsonl
+*.db
+*.sqlite
+*.xlsx
+*.xls
+*.hdf5
+*.zip
