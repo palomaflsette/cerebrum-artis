@@ -82,3 +82,7 @@ outputs/**
 *.xls
 *.hdf5
 *.zip
+
+*.png
+*.jpg
+*.jpeg

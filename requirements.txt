@@ -11,6 +11,7 @@ executing==2.2.1
 filelock==3.20.0
 fonttools==4.60.1
 fsspec==2025.9.0
+grad-cam==1.5.5
 ipykernel==7.1.0
 ipython==8.37.0
 jedi==0.19.2
@@ -28,6 +29,8 @@ nest-asyncio==1.6.0
 networkx==3.4.2
 nltk==3.9.2
 numpy==2.2.6
+opencv-python==4.12.0.88
+opencv-python-headless==4.12.0.88
 packaging==25.0
 pandas==2.3.3
 parso==0.8.5
@@ -37,6 +40,8 @@ portalocker==3.2.0
 prompt_toolkit==3.0.52
 psutil==7.1.2
 pure_eval==0.2.3
+pycocoevalcap==1.2
+pycocotools==2.0.10
 Pygments==2.19.2
 pyparsing==3.2.5
 python-dateutil==2.9.0.post0
@@ -58,6 +63,7 @@ torchvision==0.24.0
 tornado==6.5.2
 tqdm==4.67.1
 traitlets==5.14.3
+ttach==0.0.3
 typing_extensions==4.15.0
 tzdata==2025.2
 wcwidth==0.2.14
