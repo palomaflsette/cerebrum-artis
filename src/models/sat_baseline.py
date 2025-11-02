@@ -36,9 +36,9 @@ class DecoderRNN(nn.Module):
         return logits
 
 class SATBaseline(nn.Module):
-    def __init__(self, vocab_size, pad_idx):
+    def __init__(self, vocab_size, pad_idx, freeze_backbone=True):
         super().__init__()
-        self.encoder = EncoderCNN(embed_dim=512, freeze_backbone=True)
+        self.encoder = EncoderCNN(embed_dim=512, freeze_backbone=freeze_backbone)
         self.decoder = DecoderRNN(vocab_size, embed_dim=512, hidden_dim=512, pad_idx=pad_idx)
 
     def forward(self, images, captions):
@@ -47,7 +47,8 @@ class SATBaseline(nn.Module):
         return logits
 
     @torch.no_grad()
-    def generate(self, images, max_len=40, sos_id=1, eos_id=2, beam_size=1):
+    def generate(self, images, max_len=40, sos_id=1, eos_id=2, beam_size=1,
+                 length_penalty_alpha=0.6, no_repeat_ngram_size=0, min_len=0):
         """
         Greedy/Beam search generation for captioning.
 
@@ -63,11 +64,12 @@ class SATBaseline(nn.Module):
         """
         self.eval()
         if beam_size == 1:
-            return self._generate_greedy(images, max_len, sos_id, eos_id)
+            return self._generate_greedy(images, max_len, sos_id, eos_id, no_repeat_ngram_size, min_len)
         else:
-            return self._generate_beam_search(images, max_len, sos_id, eos_id, beam_size)
+            return self._generate_beam_search(images, max_len, sos_id, eos_id, beam_size,
+                                             length_penalty_alpha, no_repeat_ngram_size, min_len)
 
-    def _generate_greedy(self, images, max_len, sos_id, eos_id):
+    def _generate_greedy(self, images, max_len, sos_id, eos_id, no_repeat_ngram_size=0, min_len=0):
         device = images.device
         feats = self.encoder(images)
         feat_step = feats.unsqueeze(1)
@@ -78,10 +80,28 @@ class SATBaseline(nn.Module):
         sequences = [[] for _ in range(B)]
         finished = torch.zeros(B, dtype=torch.bool, device=device)
 
-        for _ in range(max_len):
+        for t in range(max_len):
             emb = self.decoder.embed(cur)
             out, hidden = self.decoder.lstm(emb, hidden)
             logits = self.decoder.fc(out.squeeze(1))
+            # mask EOS before min_len
+            if t < int(min_len):
+                logits[:, int(eos_id)] = -1e9
+            # no-repeat n-gram (simple bigram/trigram ban)
+            if no_repeat_ngram_size and no_repeat_ngram_size > 1:
+                V = logits.size(-1)
+                for i in range(B):
+                    seq = sequences[i]
+                    if len(seq) >= no_repeat_ngram_size - 1:
+                        prefix = tuple(seq[-(no_repeat_ngram_size-1):])
+                        # collect banned next tokens that would form a repeated n-gram
+                        banned = set()
+                        for s in range(len(seq) - (no_repeat_ngram_size - 1)):
+                            if tuple(seq[s:s+no_repeat_ngram_size-1]) == prefix:
+                                banned.add(seq[s+no_repeat_ngram_size-1])
+                        if banned:
+                            idx = torch.tensor(list(banned), device=device, dtype=torch.long)
+                            logits[i, idx] = -1e9
             nxt = logits.argmax(dim=-1)
 
             for i in range(B):
@@ -97,7 +117,8 @@ class SATBaseline(nn.Module):
             cur = nxt.unsqueeze(1)
         return sequences
 
-    def _generate_beam_search(self, images, max_len, sos_id, eos_id, beam_size):
+    def _generate_beam_search(self, images, max_len, sos_id, eos_id, beam_size,
+                               length_penalty_alpha=0.6, no_repeat_ngram_size=0, min_len=0):
         device = images.device
         B = images.size(0)
         
@@ -120,8 +141,10 @@ class SATBaseline(nn.Module):
             log_probs = torch.log_softmax(logits, dim=-1) # (B*k, V)
 
             if t == 0:
-           
                 log_probs = log_probs.view(B, beam_size, -1)[:, 0, :] # (B, V)
+                # block EOS before min_len
+                if t < int(min_len):
+                    log_probs[:, int(eos_id)] = -1e9
                 top_k_scores, top_k_tokens = log_probs.topk(beam_size, dim=1) # (B, k), (B, k)
                 
                 cur = top_k_tokens.view(-1, 1) # (B*k, 1)
@@ -130,11 +153,41 @@ class SATBaseline(nn.Module):
 
             else:
 
-                prev_scores = top_k_scores.view(-1, 1)
-                log_probs = prev_scores + log_probs # (B*k, V)
+                prev_scores = top_k_scores.view(-1, 1)  # (B*k,1)
+                # Assemble candidate scores tensor (B, k, V)
+                cand_scores = (prev_scores + log_probs).view(B, beam_size, -1)
 
-                log_probs = log_probs.view(B, -1) # (B, k*V)
-                top_k_scores, top_k_indices = log_probs.topk(beam_size, dim=1) # (B, k)
+                # no-repeat-ngram: mask banned tokens per beam
+                if no_repeat_ngram_size and no_repeat_ngram_size > 1:
+                    V = cand_scores.size(-1)
+                    for i in range(B):
+                        for j in range(beam_size):
+                            seq = sequences[i * beam_size + j]
+                            if len(seq) >= no_repeat_ngram_size - 1:
+                                prefix = tuple(seq[-(no_repeat_ngram_size-1):])
+                                banned = set()
+                                for s in range(len(seq) - (no_repeat_ngram_size - 1)):
+                                    if tuple(seq[s:s+no_repeat_ngram_size-1]) == prefix:
+                                        banned.add(seq[s+no_repeat_ngram_size-1])
+                                if banned:
+                                    idx = torch.tensor(list(banned), device=device, dtype=torch.long)
+                                    cand_scores[i, j, idx] = -1e9
+
+                # block EOS before min_len
+                if t < int(min_len):
+                    cand_scores[:, :, int(eos_id)] = -1e9
+
+                # length penalty (GNMT): score / ((5+len)^{alpha} / 6^{alpha})
+                if length_penalty_alpha and length_penalty_alpha > 0:
+                    lens = torch.tensor([
+                        len(sequences[i * beam_size + j]) + 1 for i in range(B) for j in range(beam_size)
+                    ], device=device, dtype=torch.float32).view(B, beam_size, 1)
+                    denom = ((5.0 + lens) ** length_penalty_alpha) / (6.0 ** length_penalty_alpha)
+                    cand_scores = cand_scores / denom
+
+                # Flatten and select top-k
+                flat = cand_scores.view(B, -1)
+                top_k_scores, top_k_indices = flat.topk(beam_size, dim=1) # (B,k)
 
                 beam_indices = top_k_indices // logits.size(-1) # (B, k)
                 token_indices = top_k_indices % logits.size(-1) # (B, k)

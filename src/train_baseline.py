@@ -1,4 +1,4 @@
-import os, torch, torch.nn as nn, torch.optim as optim
+import os, argparse, torch, torch.nn as nn, torch.optim as optim
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.amp import autocast  # new API to avoid deprecation warnings
 from torch.cuda.amp import GradScaler
@@ -9,16 +9,32 @@ from vocab import load_vocab, PAD, SOS, EOS
 from models.sat_baseline import SATBaseline
 from config import PROJECT_CSV_DIR
 
+def parse_args():
+    p = argparse.ArgumentParser(description="Train SAT baseline (CNN+LSTM)")
+    p.add_argument("--epochs", type=int, default=20)
+    p.add_argument("--batch-size", type=int, default=4, help="micro-batch size per step")
+    p.add_argument("--accum-steps", type=int, default=8, help="gradient accumulation steps")
+    p.add_argument("--lr", type=float, default=5e-4)
+    p.add_argument("--enc-lr", type=float, default=1e-5, help="encoder LR when unfrozen")
+    p.add_argument("--warmup-epochs", type=int, default=2)
+    p.add_argument("--label-smoothing", type=float, default=0.1)
+    p.add_argument("--image-size", type=int, default=224)
+    p.add_argument("--num-workers", type=int, default=None)
+    p.add_argument("--unfreeze-encoder", action="store_true")
+    return p.parse_args()
+
+
 def main():
+    args = parse_args()
     # --- Config
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    EPOCHS = 20
-    # Use micro-batches to fit on small GPUs (e.g., 2GB VRAM on MX550)
-    MICRO_BATCH_SIZE = 4  # adjust if you still get OOM: try 2
-    ACCUM_STEPS = 8       # effective batch = MICRO_BATCH_SIZE * ACCUM_STEPS (here, 32)
-    LEARNING_RATE = 5e-4
-    WARMUP_EPOCHS = 2
-    LABEL_SMOOTHING = 0.1
+    EPOCHS = args.epochs
+    MICRO_BATCH_SIZE = args.batch_size
+    ACCUM_STEPS = args.accum_steps
+    LEARNING_RATE = args.lr
+    ENC_LR = args.enc_lr
+    WARMUP_EPOCHS = args.warmup_epochs
+    LABEL_SMOOTHING = args.label_smoothing
 
     # --- Vocab
     # Avoid PIL DecompressionBomb warnings for very large images; we resize later anyway
@@ -28,18 +44,32 @@ def main():
     vocab_size = len(voc["itos"])
 
     # --- Data
-    train_ds = ArtemisDataset(split="train", caption_col="utterance")
-    val_ds   = ArtemisDataset(split="val",   caption_col="utterance")
-    # Choose a sensible number of workers for Windows; keep modest to avoid spawn overhead
+    train_ds = ArtemisDataset(split="train", caption_col="utterance", image_size=args.image_size)
+    val_ds   = ArtemisDataset(split="val",   caption_col="utterance", image_size=args.image_size)
+    # Choose a sensible number of workers; if not provided, auto select
     cpu_count = os.cpu_count() or 1
-    NUM_WORKERS = max(0, min(4, cpu_count - 1))
+    if args.num_workers is None:
+        NUM_WORKERS = max(0, min(8, cpu_count - 1))
+    else:
+        NUM_WORKERS = args.num_workers
     train_dl = create_loader(train_ds, batch_size=MICRO_BATCH_SIZE, shuffle=True,  num_workers=NUM_WORKERS)
     val_dl   = create_loader(val_ds,   batch_size=MICRO_BATCH_SIZE, shuffle=False, num_workers=NUM_WORKERS)
 
     # --- Model, Loss, Optimizer, Scheduler
-    model = SATBaseline(vocab_size=vocab_size, pad_idx=pad_idx).to(device)
+    model = SATBaseline(vocab_size=vocab_size, pad_idx=pad_idx, freeze_backbone=not args.unfreeze_encoder).to(device)
     crit  = nn.CrossEntropyLoss(ignore_index=pad_idx, label_smoothing=LABEL_SMOOTHING)
-    opt   = optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=LEARNING_RATE)
+    if args.unfreeze_encoder:
+        # different lrs for encoder/decoder
+        for p in model.encoder.parameters():
+            p.requires_grad = True
+        enc_params = [p for p in model.encoder.parameters() if p.requires_grad]
+        dec_params = [p for p in model.decoder.parameters() if p.requires_grad]
+        opt = optim.AdamW([
+            {"params": enc_params, "lr": ENC_LR},
+            {"params": dec_params, "lr": LEARNING_RATE},
+        ])
+    else:
+        opt = optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=LEARNING_RATE)
     
     # Scheduler with warmup handled manually in the loop
     scheduler = CosineAnnealingLR(opt, T_max=EPOCHS - WARMUP_EPOCHS, eta_min=1e-6)
