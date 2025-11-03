@@ -48,7 +48,9 @@ class SATBaseline(nn.Module):
 
     @torch.no_grad()
     def generate(self, images, max_len=40, sos_id=1, eos_id=2, beam_size=1,
-                 length_penalty_alpha=0.6, no_repeat_ngram_size=0, min_len=0):
+                 length_penalty_alpha=0.6, no_repeat_ngram_size=0, min_len=0,
+                 banned_token_ids=None,
+                 sampling=False, temperature=1.0, top_k=0, top_p=1.0):
         """
         Greedy/Beam search generation for captioning.
 
@@ -64,12 +66,16 @@ class SATBaseline(nn.Module):
         """
         self.eval()
         if beam_size == 1:
-            return self._generate_greedy(images, max_len, sos_id, eos_id, no_repeat_ngram_size, min_len)
+            return self._generate_greedy(images, max_len, sos_id, eos_id,
+                                         no_repeat_ngram_size, min_len, banned_token_ids,
+                                         sampling, temperature, top_k, top_p)
         else:
             return self._generate_beam_search(images, max_len, sos_id, eos_id, beam_size,
-                                             length_penalty_alpha, no_repeat_ngram_size, min_len)
+                                             length_penalty_alpha, no_repeat_ngram_size, min_len, banned_token_ids)
 
-    def _generate_greedy(self, images, max_len, sos_id, eos_id, no_repeat_ngram_size=0, min_len=0):
+    def _generate_greedy(self, images, max_len, sos_id, eos_id,
+                          no_repeat_ngram_size=0, min_len=0, banned_token_ids=None,
+                          sampling=False, temperature=1.0, top_k=0, top_p=1.0):
         device = images.device
         feats = self.encoder(images)
         feat_step = feats.unsqueeze(1)
@@ -87,6 +93,10 @@ class SATBaseline(nn.Module):
             # mask EOS before min_len
             if t < int(min_len):
                 logits[:, int(eos_id)] = -1e9
+            # mask banned tokens (e.g., UNK)
+            if banned_token_ids:
+                idx = torch.tensor(list(banned_token_ids), device=device, dtype=torch.long)
+                logits.index_fill_(1, idx, -1e9)
             # no-repeat n-gram (simple bigram/trigram ban)
             if no_repeat_ngram_size and no_repeat_ngram_size > 1:
                 V = logits.size(-1)
@@ -102,7 +112,52 @@ class SATBaseline(nn.Module):
                         if banned:
                             idx = torch.tensor(list(banned), device=device, dtype=torch.long)
                             logits[i, idx] = -1e9
-            nxt = logits.argmax(dim=-1)
+            # Sampling / Argmax
+            if sampling:
+                # Apply temperature
+                if temperature and temperature > 0 and temperature != 1.0:
+                    logits = logits / float(temperature)
+
+                logits_filtered = logits.clone()
+
+                # Top-k filtering on logits (keep k largest, set rest to -inf)
+                if top_k and top_k > 0:
+                    k = min(int(top_k), logits_filtered.size(-1))
+                    topk_vals, topk_idx = torch.topk(logits_filtered, k=k, dim=-1)
+                    min_topk = topk_vals[..., -1].unsqueeze(-1)
+                    keep = logits_filtered >= min_topk
+                    logits_filtered = torch.where(keep, logits_filtered, torch.full_like(logits_filtered, float('-inf')))
+
+                # Softmax to probabilities after top-k
+                probs = torch.softmax(logits_filtered, dim=-1)
+
+                # Top-p (nucleus) filtering on probs
+                if top_p and top_p < 1.0:
+                    tp = float(top_p)
+                    sorted_probs, sorted_idx = torch.sort(probs, dim=-1, descending=True)
+                    cumsum = torch.cumsum(sorted_probs, dim=-1)
+                    keep = cumsum <= tp
+                    # garanta ao menos 1 token por linha
+                    keep[..., 0] = True
+                    filtered_sorted = torch.where(keep, sorted_probs, torch.zeros_like(sorted_probs))
+                    denom = filtered_sorted.sum(dim=-1, keepdim=True)
+                    # se denom for 0 (numérico), volte para probs sem top-p
+                    need_fallback = (denom <= 0)
+                    if need_fallback.any():
+                        filtered_sorted = sorted_probs
+                        denom = filtered_sorted.sum(dim=-1, keepdim=True)
+                    filtered_sorted = filtered_sorted / (denom + 1e-12)
+                    probs = torch.zeros_like(probs).scatter(1, sorted_idx, filtered_sorted)
+
+                # Última linha de defesa: se por algum motivo a soma for 0, volte ao softmax simples dos logits
+                row_sums = probs.sum(dim=-1, keepdim=True)
+                invalid = (row_sums <= 0) | ~torch.isfinite(row_sums)
+                if invalid.any():
+                    probs = torch.softmax(logits, dim=-1)
+
+                nxt = torch.multinomial(probs, num_samples=1).squeeze(1)
+            else:
+                nxt = logits.argmax(dim=-1)
 
             for i in range(B):
                 if not finished[i]:
@@ -118,7 +173,7 @@ class SATBaseline(nn.Module):
         return sequences
 
     def _generate_beam_search(self, images, max_len, sos_id, eos_id, beam_size,
-                               length_penalty_alpha=0.6, no_repeat_ngram_size=0, min_len=0):
+                               length_penalty_alpha=0.6, no_repeat_ngram_size=0, min_len=0, banned_token_ids=None):
         device = images.device
         B = images.size(0)
         
@@ -138,6 +193,10 @@ class SATBaseline(nn.Module):
             emb = self.decoder.embed(cur) # (B*k, 1, E)
             out, hidden = self.decoder.lstm(emb, hidden) # (B*k, 1, H)
             logits = self.decoder.fc(out.squeeze(1)) # (B*k, V)
+            # mask banned tokens (e.g., UNK)
+            if banned_token_ids:
+                idx = torch.tensor(list(banned_token_ids), device=device, dtype=torch.long)
+                logits.index_fill_(1, idx, -1e9)
             log_probs = torch.log_softmax(logits, dim=-1) # (B*k, V)
 
             if t == 0:

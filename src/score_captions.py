@@ -1,7 +1,8 @@
-import os
+import os, argparse
 import math
 import pandas as pd
 import torch
+from packaging import version
 from tqdm import tqdm
 
 from datasets.artemis import ArtemisDataset
@@ -24,7 +25,22 @@ def ids_to_text(ids, itos, unk=UNK):
     return " ".join(toks)
 
 
+def parse_args():
+    p = argparse.ArgumentParser(description="Score captions on validation split")
+    p.add_argument("--ckpt", type=str, default=os.environ.get("CKPT", "results/baseline_sat_best.pt"))
+    p.add_argument("--beam-size", type=int, default=int(os.environ.get("BEAM_SIZE", 1)))
+    p.add_argument("--len-pen", type=float, default=float(os.environ.get("LEN_PEN", 0.6)))
+    p.add_argument("--no-repeat", type=int, default=int(os.environ.get("NO_REPEAT", 0)))
+    p.add_argument("--min-len", type=int, default=int(os.environ.get("MIN_LEN", 0)))
+    p.add_argument("--sampling", action="store_true")
+    p.add_argument("--top-k", type=int, default=int(os.environ.get("TOP_K", 0)))
+    p.add_argument("--top-p", type=float, default=float(os.environ.get("TOP_P", 1.0)))
+    p.add_argument("--temperature", type=float, default=float(os.environ.get("TEMPERATURE", 1.0)))
+    p.add_argument("--max-len", type=int, default=40)
+    return p.parse_args()
+
 def main():
+    args = parse_args()
     device = "cuda" if torch.cuda.is_available() else "cpu"
     voc  = load_vocab(os.path.join(PROJECT_CSV_DIR, "vocab.json"))
     itos = voc["itos"]
@@ -36,15 +52,25 @@ def main():
     ds = ArtemisDataset(split="val", image_size=224, max_len=40)
 
     # Model
-    ckpt = os.environ.get("CKPT", "results/baseline_sat_best.pt")
-    beam_size = int(os.environ.get("BEAM_SIZE", 3))
-    lp_alpha  = float(os.environ.get("LEN_PEN", 0.6))
-    no_rep_ng = int(os.environ.get("NO_REPEAT", 2))
-    min_len   = int(os.environ.get("MIN_LEN", 3))
+    ckpt = args.ckpt
+    beam_size = args.beam_size
+    lp_alpha  = args.len_pen
+    no_rep_ng = args.no_repeat
+    min_len   = args.min_len
 
     model = CaptionerSAT(vocab_size=len(itos), pad_idx=pad_id)
-    state = torch.load(ckpt, map_location=device, weights_only=True)
-    model.load_state_dict(state)
+    # Carregar checkpoint com compatibilidade ampla
+    kwargs = {}
+    if version.parse(torch.__version__) >= version.parse("2.4.0"):
+        kwargs["weights_only"] = True
+    state = torch.load(ckpt, map_location="cpu", **kwargs)
+    if isinstance(state, dict) and "model" in state:
+        state = state["model"]
+    try:
+        model.load_state_dict(state, strict=True)
+    except RuntimeError:
+        # Fallback não estrito em caso de pequenas diferenças
+        model.load_state_dict(state, strict=False)
     model.to(device).eval()
 
     refs = []
@@ -59,13 +85,18 @@ def main():
         with torch.no_grad():
             pred_ids = model.generate(
                 img.unsqueeze(0).to(device),
-                max_len=40,
+                max_len=args.max_len,
                 sos_id=sos_id,
                 eos_id=eos_id,
                 beam_size=beam_size,
                 length_penalty_alpha=lp_alpha,
                 no_repeat_ngram_size=no_rep_ng,
                 min_len=min_len,
+                banned_token_ids=[itos.index(UNK)] if UNK in itos else None,
+                sampling=args.sampling,
+                top_k=args.top_k,
+                top_p=args.top_p,
+                temperature=args.temperature,
             )[0]
         pred_text = ids_to_text(pred_ids, itos)
 

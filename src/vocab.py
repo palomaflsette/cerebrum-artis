@@ -6,7 +6,7 @@ PAD, SOS, EOS, UNK = "<pad>", "<sos>", "<eos>", "<unk>"
 def tokenize(txt: str):
     return re.findall(r"[A-Za-zÀ-ÿ']+|\d+|[.,!?;:()\-]", txt.lower())
 
-def build_vocab(caption_series, min_freq=5):
+def build_vocab(caption_series, min_freq=1):
     cnt = Counter()
     for t in caption_series.astype(str):
         cnt.update(tokenize(t))

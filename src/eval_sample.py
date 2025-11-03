@@ -1,6 +1,8 @@
-import os, torch, random, pandas as pd
+import os, torch, random, pandas as pd, argparse
 import cv2
 import numpy as np
+import torch
+from packaging import version
 from torchvision.utils import save_image
 from pytorch_grad_cam import GradCAM
 from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
@@ -11,18 +13,27 @@ from datasets.artemis import ArtemisDataset
 from models.sat_baseline import SATBaseline as CaptionerSAT    
 from vocab import load_vocab, PAD, SOS, EOS, UNK
 
-# Use o melhor checkpoint salvo durante o treino
-CKPT = "results/baseline_sat_best.pt" 
-N = 6
-MAX_LEN = 40
-BEAM_SIZE = 3 # Defina 1 para greedy, >1 para beam search
+def parse_args():
+    p = argparse.ArgumentParser(description="Avaliar amostras e gerar Grad-CAM")
+    p.add_argument("--ckpt", type=str, default="results/baseline_sat_best.pt", help="Caminho do checkpoint do modelo")
+    p.add_argument("--n", type=int, default=6, help="Número de amostras aleatórias")
+    p.add_argument("--max-len", type=int, default=40, help="Comprimento máximo da legenda gerada")
+    p.add_argument("--beam-size", type=int, default=1, help="Tamanho do beam (1 = greedy)")
+    p.add_argument("--no-repeat-ngram-size", type=int, default=0, help="Proíbe repetição de n-gramas (0=desliga)")
+    p.add_argument("--min-len", type=int, default=0, help="Comprimento mínimo antes de permitir EOS")
+    p.add_argument("--sampling", action="store_true", help="Ativa amostragem em vez de argmax (quando beam=1)")
+    p.add_argument("--top-k", type=int, default=0, help="Top-K para amostragem")
+    p.add_argument("--top-p", type=float, default=1.0, help="Top-P (nucleus) para amostragem")
+    p.add_argument("--temperature", type=float, default=1.0, help="Temperatura da amostragem")
+    return p.parse_args()
 
 # Wrapper para o modelo ser compatível com Grad-CAM
 class ModelWrapper(torch.nn.Module):
-    def __init__(self, model, pad_idx):
+    def __init__(self, model, pad_idx, max_len):
         super().__init__()
         self.model = model
         self.pad_idx = pad_idx
+        self.max_len = max_len
 
     def forward(self, images, captions=None):
         # O forward do Grad-CAM não precisa de captions, mas o nosso modelo sim.
@@ -31,7 +42,7 @@ class ModelWrapper(torch.nn.Module):
         if not images.requires_grad:
             images.requires_grad_(True)
         if captions is None:
-            captions = torch.full((images.size(0), MAX_LEN), self.pad_idx, device=images.device, dtype=torch.long)
+            captions = torch.full((images.size(0), self.max_len), self.pad_idx, device=images.device, dtype=torch.long)
         
         return self.model(images, captions)
 
@@ -89,6 +100,7 @@ def denormalize_image(tensor):
     return tensor
 
 def main():
+    args = parse_args()
     global SOS_ID, PAD_ID
     voc  = load_vocab(os.path.join(PROJECT_CSV_DIR, "vocab.json"))
     itos = voc["itos"]
@@ -97,16 +109,70 @@ def main():
     eos_id = itos.index(EOS)
     unk_id = itos.index(UNK)
 
-    ds = ArtemisDataset(split="val", image_size=224, max_len=MAX_LEN)
+    ds = ArtemisDataset(split="val", image_size=224, max_len=args.max_len)
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     # --- Modelo
-    model_base = CaptionerSAT(vocab_size=len(itos), pad_idx=PAD_ID)  
-    model_base.load_state_dict(torch.load(CKPT, map_location=device, weights_only=True))
+    vocab_size = len(itos)
+    model_base = CaptionerSAT(vocab_size=vocab_size, pad_idx=PAD_ID)
+
+    # Carregar checkpoint com tolerância a mudanças de vocabulário.
+    # Se o vocab atual for maior que o do checkpoint, copiamos o prefixo
+    # das matrizes (assumindo que o vocabulário antigo é prefixo do novo
+    # quando apenas reduzimos o min_freq). Demais entradas ficam randômicas.
+    kwargs = {}
+    if version.parse(torch.__version__) >= version.parse("2.4.0"):
+        kwargs["weights_only"] = True
+
+    ckpt = torch.load(args.ckpt, map_location="cpu", **kwargs)
+    if isinstance(ckpt, dict) and "model" in ckpt:
+        ckpt = ckpt["model"]
+
+    def _expand_decoder_if_needed(ckpt_sd, model):
+        sd_new = model.state_dict()
+        keys = [
+            ("decoder.embed.weight", 2),
+            ("decoder.fc.weight", 2),
+            ("decoder.fc.bias", 1),
+        ]
+        changed = False
+        for k, ndim in keys:
+            if k in ckpt_sd and k in sd_new:
+                w_old = ckpt_sd[k]
+                w_new = sd_new[k]
+                if w_old.shape != w_new.shape:
+                    # Copia o prefixo (eixo vocab na dim 0)
+                    rows = min(w_old.shape[0], w_new.shape[0])
+                    if ndim == 2:
+                        tmp = w_new.clone()
+                        tmp[:rows, :w_old.shape[1]] = w_old[:rows]
+                    else:
+                        tmp = w_new.clone()
+                        tmp[:rows] = w_old[:rows]
+                    ckpt_sd[k] = tmp
+                    changed = True
+        return changed
+
+    try:
+        model_base.load_state_dict(ckpt, strict=True)
+    except RuntimeError as e:
+        msg = str(e)
+        if "size mismatch" in msg or "Missing key(s)" in msg or "Unexpected key(s)" in msg:
+            print("[warn] Incompatibilidade de shapes ao carregar checkpoint. Tentando ajustar camadas dependentes do vocabulário…")
+            changed = _expand_decoder_if_needed(ckpt, model_base)
+            # Carrega de forma não estrita para ignorar pequenas diferenças (ex: buffers)
+            model_base.load_state_dict(ckpt, strict=False)
+            if changed:
+                print("[ok] Ajuste aplicado: pesos do decoder expandidos para o novo vocabulário.")
+            else:
+                print("[warn] Não foi possível ajustar automaticamente. Verifique se o vocab.json corresponde ao checkpoint.")
+        else:
+            raise
+
     model_base.to(device).eval()
 
     # --- Wrapper e Grad-CAM
-    model = ModelWrapper(model_base, PAD_ID)
+    model = ModelWrapper(model_base, PAD_ID, args.max_len)
     # Use uma camada conv rica (layer4) em vez do avgpool para Grad-CAM
     target_layers = [model.model.encoder.backbone[-2]]
     cam = GradCAM(model=model, target_layers=target_layers)
@@ -114,25 +180,36 @@ def main():
     os.makedirs("samples", exist_ok=True)
     rows = []
 
-    idxs = random.sample(range(len(ds)), k=min(N, len(ds)))
+    idxs = random.sample(range(len(ds)), k=min(args.n, len(ds)))
 
     for j, i in enumerate(idxs):
         img_tensor, _, cap_ids = ds[i] 
         img_for_cam = img_tensor.unsqueeze(0).to(device)
-
         gt_tokens = [itos[int(t)] for t in cap_ids.tolist() if t not in (PAD_ID, SOS_ID, eos_id)]
         gt = " ".join(gt_tokens)
 
-        # --- Geração com Beam Search
+        # --- Geração com opções
         pred_ids = model.model.generate(
             img_for_cam,
-            max_len=MAX_LEN,
+            max_len=args.max_len,
             sos_id=SOS_ID,
             eos_id=eos_id,
-            beam_size=BEAM_SIZE
+            beam_size=args.beam_size,
+            banned_token_ids=[unk_id],
+            no_repeat_ngram_size=args.no_repeat_ngram_size,
+            min_len=args.min_len,
+            sampling=args.sampling,
+            top_k=args.top_k,
+            top_p=args.top_p,
+            temperature=args.temperature,
         )[0]
         
         pred = " ".join(itos[t] if 0 <= t < len(itos) else UNK for t in pred_ids)
+
+        # Métrica simples: taxa de UNK na predição
+        unk_count = sum(1 for t in pred_ids if t == unk_id)
+        pred_len = max(1, len(pred_ids))
+        unk_rate = unk_count / pred_len
 
         # --- Geração do Grad-CAM (pule se a legenda ficou vazia)
         save_image(img_tensor, f"samples/img_{j}.png")
@@ -160,10 +237,10 @@ def main():
                 # Caso ocorra algum problema no CAM, apenas siga adiante
                 print(f"[warn] Grad-CAM falhou para amostra {j}: {e}")
         
-        rows.append((f"samples/img_{j}.png", pred, gt))
+        rows.append((f"samples/img_{j}.png", pred, gt, f"{unk_rate:.3f}", pred_len))
 
-    pd.DataFrame(rows, columns=["img","pred","gt"]).to_csv("samples/predicoes.csv", index=False)
-    print(f"→ {N} amostras salvas em `samples/` (com e sem Grad-CAM) e predições em `samples/predicoes.csv`")
+    pd.DataFrame(rows, columns=["img","pred","gt","unk_rate_pred","len_pred"]).to_csv("samples/predicoes.csv", index=False)
+    print(f"→ {args.n} amostras salvas em `samples/` (com e sem Grad-CAM) e predições em `samples/predicoes.csv` | beam={args.beam_size}")
 
 if __name__ == "__main__":
     main()
