@@ -1,3 +1,0 @@
-BLEU = 0.55
-ROUGE_L_F = 14.56
-Details: BLEU = 0.55 19.6/1.5/0.2/0.0 (BP = 0.886 ratio = 0.892 hyp_len = 37021 ref_len = 41514)

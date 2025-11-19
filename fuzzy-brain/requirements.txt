@@ -1,0 +1,88 @@
+# ============================================================================
+# FUZZY-BRAIN: Dependências do Projeto
+# ============================================================================
+# Projeto: Sistema Híbrido Neural-Fuzzy para Explicabilidade em Affective Image Captioning
+# Disciplina: Lógica Fuzzy
+# Data: Novembro 2025
+# ============================================================================
+
+# --- LÓGICA FUZZY ---
+# scikit-fuzzy: biblioteca principal para sistemas fuzzy em Python
+# Implementa: funções de pertinência, regras fuzzy, inferência Mamdani/Sugeno
+scikit-fuzzy==0.4.2
+
+# --- VISÃO COMPUTACIONAL ---
+# OpenCV: processamento de imagens (brilho, saturação, detecção de features)
+opencv-python==4.8.1.78
+
+# scikit-image: features avançadas (textura LBP, edge detection)
+scikit-image==0.22.0
+
+# Pillow: leitura/escrita de imagens
+Pillow==10.1.0
+
+# --- DEEP LEARNING (Integração com CNN) ---
+# PyTorch: framework para carregar ResNet e extrair features semânticas
+torch==2.1.0
+torchvision==0.16.0
+
+# --- PROCESSAMENTO NUMÉRICO ---
+# NumPy: operações matriciais e cálculos numéricos
+numpy==1.24.3
+
+# SciPy: algoritmos científicos (estatística, otimização)
+scipy==1.11.3
+
+# --- VISUALIZAÇÃO ---
+# Matplotlib: plots e gráficos (membership functions, attention maps)
+matplotlib==3.8.0
+
+# Seaborn: visualizações estatísticas elegantes
+seaborn==0.13.0
+
+# --- ANÁLISE DE DADOS ---
+# Pandas: manipulação de datasets e resultados
+pandas==2.1.1
+
+# --- JUPYTER (para notebooks de análise) ---
+jupyter==1.0.0
+ipywidgets==8.1.1
+
+# --- UTILITÁRIOS ---
+# tqdm: barras de progresso
+tqdm==4.66.1
+
+# PyYAML: leitura de configs em YAML
+PyYAML==6.0.1
+
+# --- DESENVOLVIMENTO ---
+# pytest: testes unitários
+pytest==7.4.3
+
+# black: formatação de código
+black==23.10.1
+
+# flake8: linting
+flake8==6.1.0
+
+# ============================================================================
+# NOTAS DE INSTALAÇÃO:
+# ============================================================================
+# 
+# 1. Criar ambiente virtual:
+#    python -m venv venv
+#    source venv/bin/activate  # Linux/Mac
+#    venv\Scripts\activate     # Windows
+#
+# 2. Instalar dependências:
+#    pip install -r requirements.txt
+#
+# 3. Verificar instalação:
+#    python -c "import skfuzzy; import cv2; import torch; print('OK!')"
+#
+# ============================================================================
+# COMPATIBILIDADE:
+# ============================================================================
+# Python: 3.8 - 3.11
+# CUDA: 11.8+ (opcional, para GPU)
+# ============================================================================
