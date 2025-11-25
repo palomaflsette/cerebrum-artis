@@ -88,6 +88,8 @@ outputs/**
 *.jpeg
 
 *.swp
+*.sh
 
-quarantine/
-artemis/
+garbage/
+paper-factory/
+artemis-v2/
