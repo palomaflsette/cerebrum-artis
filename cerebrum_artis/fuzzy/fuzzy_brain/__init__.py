@@ -14,12 +14,15 @@ Módulos:
 __version__ = "0.1.0"
 __author__ = "Fuzzy-Brain Research Team"
 
-# Importações principais para facilitar uso
-from fuzzy_brain.extractors.visual import VisualFeatureExtractor
-# TODO: Implementar SemanticFeatureExtractor
-# from fuzzy_brain.extractors.semantic import SemanticFeatureExtractor
+# Imports disponíveis quando implementados
+# from cerebrum_artis.fuzzy.fuzzy_brain.extractors.visual import VisualFeatureExtractor
 
 __all__ = [
-    "VisualFeatureExtractor",
-    # "SemanticFeatureExtractor",  # TODO
+    "WarmthExtractor",
+    "ColdnessExtractor",
+    "SaturationExtractor",
+    "MutednessExtractor",
+    "BrightnessExtractor",
+    "DarknessExtractor",
+    "HarmonyExtractor",
 ]

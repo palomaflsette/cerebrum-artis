@@ -1,25 +1,24 @@
 """
-Fuzzy-Brain: Sistema Híbrido Neural-Fuzzy para Explicabilidade em Arte
+Cerebrum Artis: Sistema Multi-Agente para Análise Emocional de Arte
 
-Este pacote implementa um sistema que combina Deep Learning (CNN) com Lógica Fuzzy
-para gerar explicações interpretáveis sobre emoções evocadas por obras de arte.
+Sistema que combina Deep Learning com Lógica Fuzzy para análise emocional de obras de arte.
 
 Módulos:
-    - extractors: Extração de features visuais e semânticas
-    - fuzzy: Sistema de lógica fuzzy (variáveis, regras, inferência)
-    - integration: Integração Neural-Fuzzy e geração de explicações
-    - utils: Utilitários e visualizações
+    - agents: Agentes especializados (PerceptoEmocional, Colorista, Explicador)
+    - models: Arquiteturas de modelos (V1-V4.1)
+    - fuzzy: Sistema de lógica fuzzy (7 features visuais)
+    - data: Carregamento e processamento de dados
+    - utils: Utilitários e configurações
 """
 
 __version__ = "0.1.0"
-__author__ = "Fuzzy-Brain Research Team"
+__author__ = "Paloma Sette"
 
-# Importações principais para facilitar uso
-from fuzzy_brain.extractors.visual import VisualFeatureExtractor
-# TODO: Implementar SemanticFeatureExtractor
-# from fuzzy_brain.extractors.semantic import SemanticFeatureExtractor
-
+# Módulos disponíveis (importação sob demanda)
 __all__ = [
-    "VisualFeatureExtractor",
-    # "SemanticFeatureExtractor",  # TODO
+    "agents",
+    "models",
+    "fuzzy",
+    "data",
+    "utils",
 ]
