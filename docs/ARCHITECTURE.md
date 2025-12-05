@@ -33,8 +33,8 @@ Não apenas **classificar**, mas **explicar** o porquê da classificação atrav
 ├── deep-mind/                    # AGENTE 2: Percepto Emocional (Neural)
 │   ├── v1_baseline/              # ✅ PRODUÇÃO - 70.23% accuracy
 │   ├── v2_improved/              # 🔄 67.88% (abandonado)
-│   ├── v3_fuzzy_features/        # ⏳ Fuzzy como feature engineering
-│   ├── v4_fuzzy_gating/          # ⏳ Fuzzy com gating inteligente
+│   ├── v2_fuzzy_features/        # ⏳ Fuzzy como feature engineering
+│   ├── v3_adaptive_gating/          # ⏳ Fuzzy com gating inteligente
 │   ├── multimodal_classifier.py  # Arquitetura ResNet50 + RoBERTa
 │   ├── dataset.py                # DataLoader ArtEmis
 │   └── train_emotion_classifier.py
@@ -537,8 +537,8 @@ EMOTIONS = [
 | **AGENTE 2: Percepto Emocional** |
 | Neural v1 (Baseline) | `deep-mind/v1_baseline/` | ✅ Produção | **70.23%** |
 | Neural v2 (Improved) | `deep-mind/v2_improved/` | ❌ Abandonado | 67.88% |
-| Neural v3 (Fuzzy Features) | `deep-mind/v3_fuzzy_features/` | ⏳ Treinando (epoch 2/20) | 69.69% |
-| Neural v4 (Fuzzy Gating) | `deep-mind/v4_fuzzy_gating/` | ⏳ Treinando (epoch 2/20) | 64-65% |
+| Neural v3 (Fuzzy Features) | `deep-mind/v2_fuzzy_features/` | ⏳ Treinando (epoch 2/20) | 69.69% |
+| Neural v4 (Fuzzy Gating) | `deep-mind/v3_adaptive_gating/` | ⏳ Treinando (epoch 2/20) | 64-65% |
 | SAT (Caption Generation) | `artemis-v2/sat_logs/` | ✅ Treinado | - |
 | **PerceptoEmocional Class** | `cerebrum_artis/agents/percepto.py` | ✅ **Implementado** | **70.23%** (v1) |
 | SAT Auto-Caption | `percepto.generate_caption()` | ⏳ Pendente | - |

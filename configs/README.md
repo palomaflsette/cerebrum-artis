@@ -19,9 +19,9 @@ configs/
 ├── training/           # Training configurations
 │   ├── v1_baseline.json
 │   ├── v2_improved.json
-│   ├── v3_fuzzy_features.json
-│   ├── v4_fuzzy_gating.json
-│   └── v4_1_integrated.json
+│   ├── v2_fuzzy_features.json
+│   ├── v3_adaptive_gating.json
+│   └── v3_1_integrated.json
 └── inference/          # Inference configurations
     ├── ensemble.json
     └── single_model.json
@@ -29,12 +29,12 @@ configs/
 
 ### Training Configurations
 
-#### v3_fuzzy_features.json (Recommended)
+#### v2_fuzzy_features.json (Recommended)
 
 ```json
 {
   "model": {
-    "name": "v3_fuzzy_features",
+    "name": "v2_fuzzy_features",
     "architecture": "resnet50",
     "pretrained": true,
     "num_classes": 9,
@@ -82,12 +82,12 @@ configs/
 }
 ```
 
-#### v4_fuzzy_gating.json
+#### v3_adaptive_gating.json
 
 ```json
 {
   "model": {
-    "name": "v4_fuzzy_gating",
+    "name": "v3_adaptive_gating",
     "architecture": "resnet50",
     "pretrained": true,
     "num_classes": 9,
@@ -116,17 +116,17 @@ configs/
   "models": [
     {
       "name": "v3",
-      "checkpoint": "checkpoints/v3_fuzzy_features/checkpoint_best.pt",
+      "checkpoint": "checkpoints/v2_fuzzy_features/checkpoint_best.pt",
       "weight": 0.55
     },
     {
       "name": "v4",
-      "checkpoint": "checkpoints/v4_fuzzy_gating/checkpoint_best.pt",
+      "checkpoint": "checkpoints/v3_adaptive_gating/checkpoint_best.pt",
       "weight": 0.30
     },
     {
       "name": "v4_1",
-      "checkpoint": "checkpoints/v4_1_integrated/checkpoint_best.pt",
+      "checkpoint": "checkpoints/v3_1_integrated/checkpoint_best.pt",
       "weight": 0.15
     }
   ],
@@ -144,7 +144,7 @@ configs/
 {
   "model": {
     "name": "v3",
-    "checkpoint": "checkpoints/v3_fuzzy_features/checkpoint_best.pt"
+    "checkpoint": "checkpoints/v2_fuzzy_features/checkpoint_best.pt"
   },
   "inference": {
     "batch_size": 1,
@@ -191,7 +191,7 @@ configs/
 ```python
 import json
 
-with open('configs/training/v3_fuzzy_features.json', 'r') as f:
+with open('configs/training/v2_fuzzy_features.json', 'r') as f:
     config = json.load(f)
 
 model_name = config['model']['name']
@@ -201,7 +201,7 @@ learning_rate = config['training']['learning_rate']
 **Override config from command line:**
 ```bash
 python scripts/training/train_v3.py \
-    --config configs/training/v3_fuzzy_features.json \
+    --config configs/training/v2_fuzzy_features.json \
     --learning_rate 5e-5 \
     --batch_size 64
 ```
@@ -210,7 +210,7 @@ python scripts/training/train_v3.py \
 
 **1. Copy existing config:**
 ```bash
-cp configs/training/v3_fuzzy_features.json configs/training/my_experiment.json
+cp configs/training/v2_fuzzy_features.json configs/training/my_experiment.json
 ```
 
 **2. Edit parameters:**
@@ -260,9 +260,9 @@ configs/
 ├── training/           # Configurações de treinamento
 │   ├── v1_baseline.json
 │   ├── v2_improved.json
-│   ├── v3_fuzzy_features.json
-│   ├── v4_fuzzy_gating.json
-│   └── v4_1_integrated.json
+│   ├── v2_fuzzy_features.json
+│   ├── v3_adaptive_gating.json
+│   └── v3_1_integrated.json
 └── inference/          # Configurações de inferência
     ├── ensemble.json
     └── single_model.json
@@ -305,7 +305,7 @@ configs/
 ```python
 import json
 
-with open('configs/training/v3_fuzzy_features.json', 'r') as f:
+with open('configs/training/v2_fuzzy_features.json', 'r') as f:
     config = json.load(f)
 
 model_name = config['model']['name']
@@ -315,7 +315,7 @@ learning_rate = config['training']['learning_rate']
 **Sobrescrever config da linha de comando:**
 ```bash
 python scripts/training/train_v3.py \
-    --config configs/training/v3_fuzzy_features.json \
+    --config configs/training/v2_fuzzy_features.json \
     --learning_rate 5e-5 \
     --batch_size 64
 ```
@@ -324,7 +324,7 @@ python scripts/training/train_v3.py \
 
 **1. Copiar config existente:**
 ```bash
-cp configs/training/v3_fuzzy_features.json configs/training/meu_experimento.json
+cp configs/training/v2_fuzzy_features.json configs/training/meu_experimento.json
 ```
 
 **2. Editar parâmetros:**

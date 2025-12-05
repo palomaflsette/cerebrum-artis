@@ -20,7 +20,7 @@ from dotenv import load_dotenv
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
-sys.path.insert(0, str(project_root / 'cerebrum_artis' / 'models' / 'v3_fuzzy_features'))
+sys.path.insert(0, str(project_root / 'cerebrum_artis' / 'models' / 'v2_fuzzy_features'))
 
 from train_v3 import MultimodalFuzzyClassifier as V3Model
 
@@ -89,17 +89,17 @@ def main():
     CHECKPOINT_BASE = Path(os.getenv('CHECKPOINT_BASE'))
     
     print("\nCarregando modelos...")
-    checkpoint_v3 = torch.load(CHECKPOINT_BASE / 'v3_fuzzy_features' / 'checkpoint_best.pt', map_location=device)
+    checkpoint_v3 = torch.load(CHECKPOINT_BASE / 'v2_fuzzy_features' / 'checkpoint_best.pt', map_location=device)
     model_v3 = V3Model(num_classes=9)
     model_v3.load_state_dict(checkpoint_v3['model_state_dict'])
     model_v3 = model_v3.to(device).eval()
     
-    checkpoint_v4 = torch.load(CHECKPOINT_BASE / 'v4_fuzzy_gating' / 'checkpoint_best.pt', map_location=device)
+    checkpoint_v4 = torch.load(CHECKPOINT_BASE / 'v3_adaptive_gating' / 'checkpoint_best.pt', map_location=device)
     model_v4 = FuzzyGatingClassifier(num_classes=9, fuzzy_dim=7)
     model_v4.load_state_dict(checkpoint_v4['model_state_dict'])
     model_v4 = model_v4.to(device).eval()
     
-    checkpoint_v41 = torch.load(CHECKPOINT_BASE / 'v4.1_integrated_gating' / 'checkpoint_best.pt', map_location=device)
+    checkpoint_v41 = torch.load(CHECKPOINT_BASE / 'v3_1_integrated' / 'checkpoint_best.pt', map_location=device)
     model_v41 = FuzzyGatingClassifier(num_classes=9, fuzzy_dim=7)
     model_v41.load_state_dict(checkpoint_v41['model_state_dict'])
     model_v41 = model_v41.to(device).eval()

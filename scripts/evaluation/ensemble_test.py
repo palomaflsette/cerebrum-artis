@@ -1,6 +1,6 @@
 """
 Ensemble Testing Script
-Tests different ensemble strategies combining V3, V4, and V4.1
+Tests different ensemble strategies combining V2, V3, and V3.1
 """
 
 import torch
@@ -12,9 +12,9 @@ import sys
 import os
 
 # Add paths
-sys.path.append('/home/paloma/cerebrum-artis/deep-mind/v3_fuzzy_features')
-sys.path.append('/home/paloma/cerebrum-artis/deep-mind/v4_fuzzy_gating')
-sys.path.append('/home/paloma/cerebrum-artis/deep-mind/v4.1_integrated_gating')
+sys.path.append('/home/paloma/cerebrum-artis/deep-mind/v2_fuzzy_features')
+sys.path.append('/home/paloma/cerebrum-artis/deep-mind/v3_adaptive_gating')
+sys.path.append('/home/paloma/cerebrum-artis/deep-mind/v3_1_integrated')
 
 from train_v3 import MultimodalFuzzyClassifier as V3Model, ArtEmisWithFuzzyDataset
 from train_v4 import FuzzyGatingClassifier as V4Model
@@ -128,7 +128,7 @@ def optimize_weights(probs_list, labels, step=0.05):
 
 def main():
     print("=" * 80)
-    print("🎯 ENSEMBLE TESTING: V3 + V4 + V4.1")
+    print("🎯 ENSEMBLE TESTING: V2 + V3 + V3.1")
     print("=" * 80)
     
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -136,9 +136,9 @@ def main():
     
     # Checkpoint paths
     checkpoints = {
-        'V3': '/data/paloma/deep-mind-checkpoints/v3_fuzzy_features/checkpoint_best.pt',
-        'V4': '/data/paloma/deep-mind-checkpoints/v4_fuzzy_gating/checkpoint_best.pt',
-        'V4.1': '/data/paloma/deep-mind-checkpoints/v4.1_integrated_gating/checkpoint_best.pt'
+        'V2': '/data/paloma/deep-mind-checkpoints/v2_fuzzy_features/checkpoint_best.pt',
+        'V3': '/data/paloma/deep-mind-checkpoints/v3_adaptive_gating/checkpoint_best.pt',
+        'V3.1': '/data/paloma/deep-mind-checkpoints/v3_1_integrated/checkpoint_best.pt'
     }
     
     # Load models
@@ -245,20 +245,20 @@ def main():
     print("=" * 80)
     print(f"Individual Models:")
     print(f"  V3:   {calculate_accuracy(predictions['V3'], labels):.2f}%")
-    print(f"  V4:   {calculate_accuracy(predictions['V4'], labels):.2f}%")
-    print(f"  V4.1: {calculate_accuracy(predictions['V4.1'], labels):.2f}%")
-    print(f"\nBest Ensemble (3 models):")
+    print(f"  V3:   {calculate_accuracy(predictions['V3'], labels):.2f}%")
+    print(f"  V3.1: {calculate_accuracy(predictions['V3.1'], labels):.2f}%")
+    print(f"\nBest V4 Ensemble (3 models):")
     print(f"  Optimized: {best_acc:.2f}%")
-    print(f"  Weights: V3={best_weights[0]:.3f}, V4={best_weights[1]:.3f}, V4.1={best_weights[2]:.3f}")
-    print(f"\nBest Ensemble (V3 + V4 only):")
+    print(f"  Weights: V2={best_weights[0]:.3f}, V3={best_weights[1]:.3f}, V3.1={best_weights[2]:.3f}")
+    print(f"\nBest Ensemble (V2 + V3 only):")
     print(f"  Optimized: {best_acc_v3_v4:.2f}%")
-    print(f"  Weights: V3={best_weights_v3_v4[0]:.3f}, V4={best_weights_v3_v4[1]:.3f}")
+    print(f"  Weights: V2={best_weights_v3_v4[0]:.3f}, V3={best_weights_v3_v4[1]:.3f}")
     
     gain_3models = best_acc - max(v3_acc, v4_acc, v4_1_acc)
     gain_2models = best_acc_v3_v4 - max(v3_acc, v4_acc)
     
     print(f"\n💡 Improvement over best single model:")
-    print(f"  3-model ensemble: +{gain_3models:.2f}%")
+    print(f"  V4 ensemble (3 models): +{gain_3models:.2f}%")
     print(f"  2-model ensemble: +{gain_2models:.2f}%")
     print("=" * 80)
 

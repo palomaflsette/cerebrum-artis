@@ -164,13 +164,13 @@ save_checkpoint(
     scheduler=scheduler,
     epoch=15,
     val_accuracy=0.7063,
-    checkpoint_dir='checkpoints/v3_fuzzy_features',
+    checkpoint_dir='checkpoints/v2_fuzzy_features',
     is_best=True
 )
 
 # Load checkpoint
 checkpoint = load_checkpoint(
-    checkpoint_path='checkpoints/v3_fuzzy_features/checkpoint_best.pt',
+    checkpoint_path='checkpoints/v2_fuzzy_features/checkpoint_best.pt',
     model=model,
     optimizer=optimizer  # optional
 )
@@ -178,7 +178,7 @@ start_epoch = checkpoint['epoch'] + 1
 
 # Get best checkpoint from directory
 best_checkpoint_path = get_best_checkpoint(
-    checkpoint_dir='checkpoints/v3_fuzzy_features',
+    checkpoint_dir='checkpoints/v2_fuzzy_features',
     metric='val_accuracy'
 )
 ```
@@ -196,7 +196,7 @@ from cerebrum_artis.utils.config import (
 )
 
 # Load JSON config
-config = load_config('configs/training/v3_fuzzy_features.json')
+config = load_config('configs/training/v2_fuzzy_features.json')
 
 # Override with command-line arguments
 config = override_config(
@@ -459,13 +459,13 @@ save_checkpoint(
     scheduler=scheduler,
     epoch=15,
     val_accuracy=0.7063,
-    checkpoint_dir='checkpoints/v3_fuzzy_features',
+    checkpoint_dir='checkpoints/v2_fuzzy_features',
     is_best=True
 )
 
 # Carregar checkpoint
 checkpoint = load_checkpoint(
-    checkpoint_path='checkpoints/v3_fuzzy_features/checkpoint_best.pt',
+    checkpoint_path='checkpoints/v2_fuzzy_features/checkpoint_best.pt',
     model=model,
     optimizer=optimizer  # opcional
 )

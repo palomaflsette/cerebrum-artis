@@ -46,7 +46,7 @@ Enhanced version with better feature engineering and training strategies.
 - Validation Accuracy: ~68%
 - Training Time: ~5 hours (20 epochs)
 
-#### V3 - Fuzzy Features (v3_fuzzy_features/)
+#### V2 - Fuzzy Features (v2_fuzzy_features/)
 
 **Major breakthrough:** Integration of fuzzy logic visual features.
 
@@ -87,7 +87,7 @@ class MultimodalFuzzyClassifier(nn.Module):
 
 **Usage:**
 ```python
-from cerebrum_artis.models.v3_fuzzy_features import MultimodalFuzzyClassifier
+from cerebrum_artis.models.v2_fuzzy_features import MultimodalFuzzyClassifier
 
 model = MultimodalFuzzyClassifier(num_classes=9)
 model.load_checkpoint('path/to/checkpoint_best.pt')
@@ -96,7 +96,7 @@ model.load_checkpoint('path/to/checkpoint_best.pt')
 emotion = model.predict(image, caption)
 ```
 
-#### V4 - Fuzzy Gating (v4_fuzzy_gating/)
+#### V3 - Adaptive Gating (v3_adaptive_gating/)
 
 Adaptive fusion mechanism using fuzzy features as gating signals.
 
@@ -124,7 +124,7 @@ class FuzzyGatingClassifier(nn.Module):
 - Best Epoch: 5
 - Note: Showed overfitting after epoch 5
 
-#### V4.1 - Integrated Gating (v4_1_integrated/)
+#### V4.1 - Integrated Gating (v3_1_integrated/)
 
 Integrated gating mechanism directly in the forward pass.
 
@@ -142,9 +142,9 @@ Integrated gating mechanism directly in the forward pass.
 class EnsembleClassifier:
     def __init__(self):
         self.models = [
-            load_model('v3_fuzzy_features'),
-            load_model('v4_fuzzy_gating'),
-            load_model('v4_1_integrated')
+            load_model('v2_fuzzy_features'),
+            load_model('v3_adaptive_gating'),
+            load_model('v3_1_integrated')
         ]
         
         # Optimized weights from grid search
@@ -206,12 +206,12 @@ python scripts/training/train_v3.py \
 ### Loading Pretrained Models
 
 ```python
-from cerebrum_artis.models.v3_fuzzy_features import MultimodalFuzzyClassifier
+from cerebrum_artis.models.v2_fuzzy_features import MultimodalFuzzyClassifier
 from cerebrum_artis.models.ensemble import EnsembleClassifier
 
 # Load single model
 model = MultimodalFuzzyClassifier.from_pretrained(
-    'checkpoints/v3_fuzzy_features/checkpoint_best.pt'
+    'checkpoints/v2_fuzzy_features/checkpoint_best.pt'
 )
 
 # Load ensemble (recommended)
@@ -230,11 +230,11 @@ print(f"Confidence: {result['confidence']:.2%}")
 Pretrained checkpoints are available at:
 ```
 /data/paloma/deep-mind-checkpoints/
-├── v3_fuzzy_features/
+├── v2_fuzzy_features/
 │   └── checkpoint_best.pt (epoch 3, 70.63%)
-├── v4_fuzzy_gating/
+├── v3_adaptive_gating/
 │   └── checkpoint_best.pt (epoch 5, 70.37%)
-└── v4_1_integrated/
+└── v3_1_integrated/
     └── checkpoint_best.pt (epoch 6, 70.40%)
 ```
 
@@ -320,7 +320,7 @@ Mecanismo de fusão adaptativa usando features fuzzy como sinais de gating.
 **Performance:**
 - Acurácia de Validação: 70.37%
 
-#### V4.1 - Gating Integrado
+#### V3.1 - Gating Integrado
 Mecanismo de gating integrado diretamente no forward pass.
 
 **Performance:**

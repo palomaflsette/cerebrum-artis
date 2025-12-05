@@ -126,7 +126,7 @@ class PerceptoEmocionalV3:
         base_dir = Path("/data/paloma/deep-mind-checkpoints")
         
         # V3 com fuzzy features
-        v3_dir = base_dir / "v3_fuzzy_features"
+        v3_dir = base_dir / "v2_fuzzy_features"
         if not v3_dir.exists():
             raise FileNotFoundError(
                 f"Checkpoint V3 não encontrado em {v3_dir}\n"

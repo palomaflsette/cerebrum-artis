@@ -6,19 +6,19 @@
 cerebrum-artis/
 ├── cerebrum_artis/          # Main Python package
 │   ├── agents/              # Multi-agent system (PerceptoEmocional, Colorista, Explicador)
-│   ├── models/              # Deep learning models (V1-V4.1)
+│   ├── models/              # Deep learning models (V1-V4)
 │   │   ├── v1_baseline/
 │   │   ├── v2_improved/
-│   │   ├── v3_fuzzy_features/
-│   │   ├── v4_fuzzy_gating/
-│   │   ├── v4_1_integrated/
+│   │   ├── v2_fuzzy_features/
+│   │   ├── v3_adaptive_gating/
+│   │   ├── v3_1_integrated/
 │   │   └── ensemble/
 │   ├── fuzzy/               # Fuzzy logic system
 │   ├── data/                # Data loading and preprocessing
 │   └── utils/               # Utility functions
 │
 ├── scripts/                 # Executable scripts
-│   ├── training/            # train_v3.py, train_v4.py, train_v4_1.py
+│   ├── training/            # train_v2.py, train_v3.py, train_v3_1.py
 │   ├── evaluation/          # ensemble_test.py, eval_single_model.py
 │   └── demo/                # demo_percepto.py
 │
@@ -41,9 +41,9 @@ cerebrum-artis/
 ├── checkpoints/             # Model weights (ignored by git)
 │   ├── v1_baseline/
 │   ├── v2_improved/
-│   ├── v3_fuzzy_features/
-│   ├── v4_fuzzy_gating/
-│   ├── v4_1_integrated/
+│   ├── v2_fuzzy_features/
+│   ├── v3_adaptive_gating/
+│   ├── v3_1_integrated/
 │   └── ensemble/
 │
 └── outputs/                 # Analysis outputs (ignored by git)
@@ -79,7 +79,7 @@ python scripts/training/train_v3.py --data_path data/artemis/
 
 ### Evaluation
 ```bash
-python scripts/evaluation/ensemble_test.py
+python scripts/evaluation/ensemble_test.py  # Test V2+V3+V3.1 combinations
 ```
 
 ### Analysis

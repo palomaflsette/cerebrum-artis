@@ -46,13 +46,13 @@ python scripts/training/train_v4.py \
     --data_path /path/to/artemis/data
 ```
 
-### train_v4_1.py
+### train_v3_1.py
 
-Train the V4.1 Integrated Gating model.
+Train the V3.1 Integrated Gating model.
 
 ```bash
-python scripts/training/train_v4_1.py \
-    --config configs/training/v4_1_config.json \
+python scripts/training/train_v3_1.py \
+    --config configs/training/v3_1_config.json \
     --data_path /path/to/artemis/data
 ```
 
@@ -64,7 +64,7 @@ Evaluate ensemble combinations of multiple models.
 
 ```bash
 python scripts/evaluation/ensemble_test.py \
-    --models v3 v4 v4_1 \
+    --models v2 v3 v3_1 \
     --checkpoint_dir /path/to/checkpoints \
     --data_path /path/to/artemis/data \
     --strategies simple voting optimized
@@ -111,7 +111,7 @@ Evaluate a single model quickly:
 ```bash
 python scripts/evaluation/eval_models.py \
     --model v3 \
-    --checkpoint checkpoints/v3_fuzzy_features/checkpoint_best.pt \
+    --checkpoint checkpoints/v2_fuzzy_features/checkpoint_best.pt \
     --test_split validation
 ```
 

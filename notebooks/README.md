@@ -27,7 +27,7 @@ Cobre:
 ---
 
 ### 1. `01_model_evaluation.ipynb` - **Treinamento e Avaliação de Modelos**
-**Avaliação detalhada de todas as versões (V1-V4.1).**
+**Avaliação detalhada de todas as versões (V1-V4).**
 
 Cobre:
 - Avaliação de cada modelo no test set
@@ -48,7 +48,7 @@ Cobre:
 **Pipeline completo com os 3 agentes trabalhando juntos.**
 
 Demonstra:
-- **PerceptoEmocional**: Classificação de emoções (ensemble V3+V4+V4.1)
+- **PerceptoEmocional**: Classificação de emoções (V4 ensemble: V2+V3+V3.1)
 - **Colorista**: Análise de paleta de cores dominantes
 - **Explicador**: Explicações textuais + visuais (Grad-CAM)
 - Pipeline integrado de análise completa

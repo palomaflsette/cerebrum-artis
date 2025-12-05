@@ -147,7 +147,7 @@ Total input: 2823 dimensions (2048 + 768 + 7)
 - Val Acc: **69.69%** ← **+2.1% melhor que V1!**
 - Status: ✅ **Funcionando perfeitamente, sem overfitting**
 
-**Checkpoint**: `/data/paloma/deep-mind-checkpoints/v3_fuzzy_features/checkpoint_best.pt`
+**Checkpoint**: `/data/paloma/deep-mind-checkpoints/v2_fuzzy_features/checkpoint_best.pt`
 
 ---
 
@@ -363,7 +363,7 @@ VisualFeatureExtractor (fuzzy-brain/fuzzy_brain/extractors/visual.py):
 **Solução**: Pré-computar e cachear!
 
 ```bash
-# Script de pré-computação (deep-mind/v3_fuzzy_features/precompute_fuzzy_features.py)
+# Script de pré-computação (deep-mind/v2_fuzzy_features/precompute_fuzzy_features.py)
 python precompute_fuzzy_features.py
 
 # Processa ~80,000 imagens em paralelo (16 cores)
@@ -755,7 +755,7 @@ cerebrum-artis/
 │   ├── v1_baseline/
 │   │   └── train_v1.py              # Treinamento V1 (PARADO epoch 8)
 │   │
-│   └── v3_fuzzy_features/
+│   └── v2_fuzzy_features/
 │       ├── train_v3.py              # Treinamento V3 (EM ANDAMENTO) ✓
 │       ├── train_v3_cached.py       # V3 com features pré-computadas
 │       └── precompute_fuzzy_features.py  # Gera cache de features
@@ -1222,7 +1222,7 @@ agente = PerceptoEmocionalV3()  # Carrega V3
 
 **Data de Implementação**: Novembro 2025  
 **Status**: 🔄 Treinamento em andamento (Epoch 2/20)  
-**Checkpoint**: `/data/paloma/deep-mind-checkpoints/v4_fuzzy_gating/`
+**Checkpoint**: `/data/paloma/deep-mind-checkpoints/v3_adaptive_gating/`
 
 ---
 
@@ -2388,7 +2388,7 @@ def main():
 
 #### **Arquitetura V4.1**
 
-**Arquivo**: `deep-mind/v4.1_integrated_gating/train_v4_1.py`
+**Arquivo**: `deep-mind/v3_1_integrated/train_v4_1.py`
 
 ```python
 class IntegratedFuzzyGatingClassifier(nn.Module):
@@ -2517,7 +2517,7 @@ for batch in dataloader:
 v4_1_model = IntegratedFuzzyGatingClassifier(num_classes=9)
 
 # 2. Carrega checkpoint V4 (epoch 5, 70.37% val_acc)
-v4_checkpoint = torch.load('v4_fuzzy_gating/checkpoint_best.pt')
+v4_checkpoint = torch.load('v3_adaptive_gating/checkpoint_best.pt')
 
 # 3. Carrega com strict=False
 # Permite carregar apenas camadas compatíveis, ignora novas
@@ -2572,7 +2572,7 @@ print(f"Unexpected keys: {len(unexpected_keys)}")  # 0 também!
 | **Epochs** | 1→20 | **6→20** | Continua de onde V4 parou |
 | **Batch Size** | 32 | 32 | Igual |
 | **Early Stopping** | ✅ patience=5 | ✅ patience=5 | Igual |
-| **Checkpoint Dir** | `v4_fuzzy_gating/` | `v4.1_integrated_gating/` | Separados |
+| **Checkpoint Dir** | `v3_adaptive_gating/` | `v3_1_integrated/` | Separados |
 
 **Por que LR menor?**
 
@@ -2582,7 +2582,7 @@ print(f"Unexpected keys: {len(unexpected_keys)}")  # 0 também!
 
 #### **Script de Lançamento**
 
-**Arquivo**: `deep-mind/v4.1_integrated_gating/launch_v4_1.sh`
+**Arquivo**: `deep-mind/v3_1_integrated/launch_v4_1.sh`
 
 ```bash
 #!/bin/bash
@@ -2590,7 +2590,7 @@ print(f"Unexpected keys: {len(unexpected_keys)}")  # 0 também!
 export CUDA_VISIBLE_DEVICES=2
 
 # Working directory
-cd /home/paloma/cerebrum-artis/deep-mind/v4.1_integrated_gating
+cd /home/paloma/cerebrum-artis/deep-mind/v3_1_integrated
 
 # Ativa ambiente e roda
 /data/paloma/venvs/cerebrum-artis/bin/python train_v4_1.py
@@ -2625,7 +2625,7 @@ Initializing Model V4.1:
 ✅ Sistema Fuzzy inicializado com 18 regras
 ✅ V4.1 model created
 
-🔄 Loading V4 weights from: /data/paloma/.../v4_fuzzy_gating/checkpoint_best.pt
+🔄 Loading V4 weights from: /data/paloma/.../v3_adaptive_gating/checkpoint_best.pt
 ✅ V4 weights loaded!
    📝 Missing keys (expected): 0  ← Perfeito!
    📝 Unexpected keys: 0
@@ -2649,10 +2649,10 @@ Training: Epoch 6/20 [INICIANDO...]
 
 ```python
 # train_v4_1.py - linha 432
-checkpoint_dir = '/data/paloma/deep-mind-checkpoints/v4.1_integrated_gating'
+checkpoint_dir = '/data/paloma/deep-mind-checkpoints/v3_1_integrated'
 
 # Checkpoints salvos:
-/data/paloma/deep-mind-checkpoints/v4.1_integrated_gating/
+/data/paloma/deep-mind-checkpoints/v3_1_integrated/
 ├── checkpoint_best.pt           # Melhor val_acc
 ├── checkpoint_epoch6_last.pt    # Última época
 ├── checkpoint_epoch7_last.pt    # (auto-cleanup mantém últimas 2)
@@ -2820,9 +2820,9 @@ for epoch in range(start_epoch, num_epochs + 1):
 
 | Modelo | Status | Epoch | Val Acc | GPU | Checkpoint Dir |
 |--------|--------|-------|---------|-----|----------------|
-| **V3** | ⏸️ Parado | 3/20 | 70.63% | - | `v3_fuzzy_features/` |
-| **V4** | 🔄 Treinando | 5/20 | 70.37% | 1 | `v4_fuzzy_gating/` |
-| **V4.1** | 🔄 Treinando | 6/20 | TBD | 2 | `v4.1_integrated_gating/` |
+| **V3** | ⏸️ Parado | 3/20 | 70.63% | - | `v2_fuzzy_features/` |
+| **V4** | 🔄 Treinando | 5/20 | 70.37% | 1 | `v3_adaptive_gating/` |
+| **V4.1** | 🔄 Treinando | 6/20 | TBD | 2 | `v3_1_integrated/` |
 
 **Configuração Paralela**:
 ```
@@ -3169,19 +3169,19 @@ def optimize_weights(probs_list, labels, step=0.05):
 **Modelos Testados:**
 ```
 V3 (MultimodalFuzzyClassifier)
-├─ Checkpoint: /data/paloma/deep-mind-checkpoints/v3_fuzzy_features/checkpoint_best.pt
+├─ Checkpoint: /data/paloma/deep-mind-checkpoints/v2_fuzzy_features/checkpoint_best.pt
 ├─ Melhor época: 3
 ├─ Val Acc: 70.63%
 └─ Arquitetura: ResNet50 + RoBERTa + 7 fuzzy features → MLP
 
 V4 (FuzzyGatingClassifier)  
-├─ Checkpoint: /data/paloma/deep-mind-checkpoints/v4_fuzzy_gating/checkpoint_best.pt
+├─ Checkpoint: /data/paloma/deep-mind-checkpoints/v3_adaptive_gating/checkpoint_best.pt
 ├─ Melhor época: 5 (antes do restart)
 ├─ Val Acc: 70.37%
 └─ Arquitetura: Gating adaptativo entre features fuzzy e deep
 
 V4.1 (IntegratedFuzzyGatingClassifier)
-├─ Checkpoint: /data/paloma/deep-mind-checkpoints/v4.1_integrated_gating/checkpoint_best.pt
+├─ Checkpoint: /data/paloma/deep-mind-checkpoints/v3_1_integrated/checkpoint_best.pt
 ├─ Melhor época: 6
 ├─ Val Acc: 70.40%
 └─ Arquitetura: Gating integrado no forward pass
@@ -3485,9 +3485,9 @@ class EnsembleClassifier:
 
 **Checkpoints Utilizados:**
 ```
-V3:   /data/paloma/deep-mind-checkpoints/v3_fuzzy_features/checkpoint_best.pt
-V4:   /data/paloma/deep-mind-checkpoints/v4_fuzzy_gating/checkpoint_best.pt (epoch 5)
-V4.1: /data/paloma/deep-mind-checkpoints/v4.1_integrated_gating/checkpoint_best.pt (epoch 6)
+V3:   /data/paloma/deep-mind-checkpoints/v2_fuzzy_features/checkpoint_best.pt
+V4:   /data/paloma/deep-mind-checkpoints/v3_adaptive_gating/checkpoint_best.pt (epoch 5)
+V4.1: /data/paloma/deep-mind-checkpoints/v3_1_integrated/checkpoint_best.pt (epoch 6)
 ```
 
 **Resultados Salvos:**

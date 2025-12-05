@@ -24,8 +24,8 @@ amusement, awe, contentment, excitement, anger, disgust, fear, sadness, somethin
 
 ### Key Results
 
-- **Best Individual Model**: V3 Fuzzy Features - 70.63% validation accuracy
-- **Ensemble Model**: 71.47% validation accuracy (+0.84% improvement)
+- **Best Individual Model**: V2 Fuzzy Features - 70.63% validation accuracy
+- **V4 Ensemble Model**: 71.47% validation accuracy (+0.84% improvement)
 - **Dataset**: ArtEmis (80,000+ paintings with emotional annotations)
 
 ### Project Structure
@@ -34,7 +34,7 @@ amusement, awe, contentment, excitement, anger, disgust, fear, sadness, somethin
 cerebrum-artis/
 ├── cerebrum_artis/          # Main Python package
 │   ├── agents/              # Multi-agent system (PerceptoEmocional, Colorista, Explicador)
-│   ├── models/              # Deep learning model versions (V1-V4.1 + Ensemble)
+│   ├── models/              # Deep learning model versions (V1-V4)
 │   ├── fuzzy/               # Fuzzy logic system
 │   ├── data/                # Data processing utilities
 │   └── utils/               # General utilities
@@ -100,8 +100,8 @@ print(f"Confidence: {result['confidence']:.2%}")
 | V2 | Improved | ~68% | Enhanced features |
 | V3 | Fuzzy Features | **70.63%** | Added 7 fuzzy visual features |
 | V4 | Fuzzy Gating | 70.37% | Adaptive fusion mechanism |
-| V4.1 | Integrated Gating | 70.40% | Integrated gating in forward pass |
-| **Ensemble** | V3+V4+V4.1 | **71.47%** | Optimized weighted combination |
+| V3.1 | Integrated Gating | 70.40% | Integrated gating in forward pass |
+| **V4** | V2+V3+V3.1 | **71.47%** | Optimized weighted ensemble |
 
 ### Training Models
 
@@ -256,8 +256,8 @@ print(f"Confiança: {resultado['confidence']:.2%}")
 | V2 | Improved | ~68% | Features melhoradas |
 | V3 | Fuzzy Features | **70.63%** | 7 features fuzzy visuais adicionadas |
 | V4 | Fuzzy Gating | 70.37% | Mecanismo de fusão adaptativa |
-| V4.1 | Integrated Gating | 70.40% | Gating integrado no forward pass |
-| **Ensemble** | V3+V4+V4.1 | **71.47%** | Combinação ponderada otimizada |
+| V3.1 | Integrated Gating | 70.40% | Gating integrado no forward pass |
+| **V4** | V2+V3+V3.1 | **71.47%** | Ensemble ponderado otimizado |
 
 ### Treinando Modelos
 

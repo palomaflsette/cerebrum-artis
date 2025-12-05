@@ -5,7 +5,7 @@ Sistema que combina Deep Learning com Lógica Fuzzy para análise emocional de o
 
 Módulos:
     - agents: Agentes especializados (PerceptoEmocional, Colorista, Explicador)
-    - models: Arquiteturas de modelos (V1-V4.1)
+    - models: Arquiteturas de modelos (V1-V4)
     - fuzzy: Sistema de lógica fuzzy (7 features visuais)
     - data: Carregamento e processamento de dados
     - utils: Utilitários e configurações

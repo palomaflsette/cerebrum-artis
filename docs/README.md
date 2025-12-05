@@ -20,7 +20,7 @@ This directory contains all project documentation organized by type.
 Detailed report documenting the entire project development process, including:
 - Initial baseline models (V1, V2)
 - Fuzzy logic integration (V3)
-- Advanced gating mechanisms (V4, V4.1)
+- Advanced gating mechanisms (V3, V3.1)
 - Ensemble methods and optimization
 - Training logs and performance analysis
 - Failure analysis and lessons learned
@@ -29,14 +29,14 @@ Detailed report documenting the entire project development process, including:
 - V3 (Fuzzy Features): 70.63% accuracy
 - Ensemble (Optimized): 71.47% accuracy
 - 441 ensemble combinations tested
-- Optimal weights: V3=55%, V4=30%, V4.1=15%
+- Optimal weights: V2=55%, V3=30%, V3.1=15%
 
 #### [ARCHITECTURE.md](ARCHITECTURE.md)
 **System Architecture Documentation** (Portuguese)
 
 Comprehensive architecture overview covering:
 - Multi-agent system design
-- Model architectures (V1-V4.1)
+- Model architectures (V1-V4)
 - Fuzzy logic system
 - Data flow and processing pipeline
 - Component interactions
@@ -193,7 +193,7 @@ Este diretório contém toda a documentação do projeto organizada por tipo.
 Relatório detalhado documentando todo o processo de desenvolvimento do projeto, incluindo:
 - Modelos baseline iniciais (V1, V2)
 - Integração de lógica fuzzy (V3)
-- Mecanismos avançados de gating (V4, V4.1)
+- Mecanismos avançados de gating (V3, V3.1)
 - Métodos de ensemble e otimização
 - Logs de treinamento e análise de performance
 - Análise de falhas e lições aprendidas
@@ -202,14 +202,14 @@ Relatório detalhado documentando todo o processo de desenvolvimento do projeto,
 - V3 (Fuzzy Features): 70.63% acurácia
 - Ensemble (Otimizado): 71.47% acurácia
 - 441 combinações de ensemble testadas
-- Pesos ótimos: V3=55%, V4=30%, V4.1=15%
+- Pesos ótimos: V2=55%, V3=30%, V3.1=15%
 
 #### [ARCHITECTURE.md](ARCHITECTURE.md)
 **Documentação de Arquitetura do Sistema**
 
 Visão geral abrangente da arquitetura cobrindo:
 - Design do sistema multi-agente
-- Arquiteturas de modelos (V1-V4.1)
+- Arquiteturas de modelos (V1-V4)
 - Sistema de lógica fuzzy
 - Fluxo de dados e pipeline de processamento
 - Interações entre componentes
