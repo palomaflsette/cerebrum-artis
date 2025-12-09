@@ -15,7 +15,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, f1_score
 
 from multimodal_classifier import MultimodalEmotionClassifier
 from dataset import create_dataloaders, ARTEMIS_EMOTIONS
@@ -110,8 +110,9 @@ def validate(model, dataloader, criterion, device, epoch):
     
     epoch_loss = running_loss / len(dataloader)
     epoch_acc = accuracy_score(all_labels, all_preds)
+    epoch_f1 = f1_score(all_labels, all_preds, average='weighted')
     
-    return epoch_loss, epoch_acc, all_preds, all_labels
+    return epoch_loss, epoch_acc, epoch_f1, all_preds, all_labels
 
 
 def save_checkpoint(model, optimizer, epoch, val_acc, save_path, is_best=False):
@@ -273,7 +274,7 @@ def main(args):
         )
         
         # Validate
-        val_loss, val_acc, val_preds, val_labels = validate(
+        val_loss, val_acc, val_f1, val_preds, val_labels = validate(
             model, val_loader, criterion, device, epoch
         )
         
@@ -283,12 +284,13 @@ def main(args):
         # Logging
         print(f"\n📊 Epoch {epoch}/{args.epochs}")
         print(f"   Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.4f}")
-        print(f"   Val Loss:   {val_loss:.4f} | Val Acc:   {val_acc:.4f}")
+        print(f"   Val Loss:   {val_loss:.4f} | Val Acc:   {val_acc:.4f} | Val F1: {val_f1:.4f}")
         
         writer.add_scalar('Loss/train', train_loss, epoch)
         writer.add_scalar('Loss/val', val_loss, epoch)
         writer.add_scalar('Accuracy/train', train_acc, epoch)
         writer.add_scalar('Accuracy/val', val_acc, epoch)
+        writer.add_scalar('F1/val', val_f1, epoch)
         writer.add_scalar('LR', optimizer.param_groups[0]['lr'], epoch)
         
         # Save checkpoint & early stopping check
@@ -313,11 +315,11 @@ def main(args):
     
     # Final evaluation
     print("\n🎯 Final Test Evaluation...")
-    test_loss, test_acc, test_preds, test_labels = validate(
+    test_loss, test_acc, test_f1, test_preds, test_labels = validate(
         model, test_loader, criterion, device, 'TEST'
     )
     
-    print(f"\n📊 Test Accuracy: {test_acc:.4f}")
+    print(f"\n📊 Test Accuracy: {test_acc:.4f} | Test F1: {test_f1:.4f}")
     
     # Classification report
     report = classification_report(
@@ -345,7 +347,7 @@ if __name__ == "__main__":
     
     # Data
     parser.add_argument('--csv-path', type=str,
-                       default='/home/paloma/cerebrum-artis/artemis/dataset/official_data/combined_artemis_with_splits.csv',
+                       default='/home/paloma/cerebrum-artis/data/artemis/dataset/official_data/combined_artemis_with_splits.csv',
                        help='Path to ArtEmis CSV (with splits)')
     parser.add_argument('--img-dir', type=str,
                        default='/data/paloma/data/paintings/wikiart',
@@ -381,7 +383,7 @@ if __name__ == "__main__":
     
     # Saving
     parser.add_argument('--save-dir', type=str,
-                       default='/home/paloma/cerebrum-artis/deep-mind/checkpoints',
+                       default='/data/paloma/cerebrum-artis/checkpoints/v1_baseline',
                        help='Directory to save checkpoints')
     parser.add_argument('--save-every', type=int, default=5,
                        help='Save checkpoint every N epochs')

@@ -176,7 +176,7 @@ class FuzzyRules:
         # AWE (Admiração) - 3 regras
         # ====================================================================
         
-        # Regra 4: Alta simetria + harmonia → Admiração
+        # Regra 4: Alta simetria + harmonia → Admiração FORTE
         # Ref: Ramachandran & Hirstein (1999)
         rules.append(ctrl.Rule(
             antecedent=(
@@ -197,14 +197,14 @@ class FuzzyRules:
             label='AWE_2_complex_harmony'
         ))
         
-        # Regra 6: Simetria + brilho claro → Admiração
+        # Regra 6: Simetria moderada/alta → Admiração (REFORÇADO)
+        # AJUSTADO: Simetria sozinha já pode evocar admiração estética
         rules.append(ctrl.Rule(
             antecedent=(
-                symmetry['simetrico'] &
-                brightness['muito_claro']
+                symmetry['simetrico'] | symmetry['muito_simetrico']
             ),
             consequent=awe['medio'],
-            label='AWE_3_symmetry_bright'
+            label='AWE_3_symmetry_aesthetic'
         ))
         
         # ====================================================================
@@ -223,14 +223,16 @@ class FuzzyRules:
             label='CONTENTMENT_1_balanced'
         ))
         
-        # Regra 8: Harmonia + simplicidade → Serenidade
+        # Regra 8: Harmonia + simplicidade + BAIXA simetria → Serenidade suave
+        # AJUSTADO: Agora exige baixa simetria para evitar conflito com AWE
         rules.append(ctrl.Rule(
             antecedent=(
                 harmony['harmonico'] &
-                complexity['simples']
+                complexity['simples'] &
+                (symmetry['assimetrico'] | symmetry['muito_assimetrico'])  # MUDANÇA: evita pinturas simétricas
             ),
             consequent=contentment['medio'],
-            label='CONTENTMENT_2_harmony_simple'
+            label='CONTENTMENT_2_harmony_simple_asymmetric'
         ))
         
         # ====================================================================

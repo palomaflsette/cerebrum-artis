@@ -11,11 +11,16 @@ import os
 import pandas as pd
 import numpy as np
 import unicodedata
+import difflib
 from PIL import Image
 import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 from transformers import RobertaTokenizer
+import random
+
+# Fix DecompressionBombWarning for large art images
+Image.MAX_IMAGE_PIXELS = None
 
 
 # ArtEmis emotion labels (ordem importa!)
@@ -107,6 +112,14 @@ class ArtEmisEmotionDataset(Dataset):
     def __len__(self):
         return len(self.data)
     
+    def _fix_encoding(self, name):
+        """Tenta corrigir problemas comuns de encoding no dataset."""
+        try:
+            # Fix comum para mojibake (utf-8 interpretado como latin1)
+            return name.encode('latin1').decode('utf-8')
+        except:
+            return name
+
     def __getitem__(self, idx):
         row = self.data.iloc[idx]
         
@@ -117,26 +130,26 @@ class ArtEmisEmotionDataset(Dataset):
         # Strategy 1: Direct path
         img_path = os.path.join(self.img_dir, art_style, f"{painting_name}.jpg")
         
-        # Strategy 2: Normalize unicode (fix special chars)
+        # Strategy 2: Fix encoding (mojibake)
         if not os.path.exists(img_path):
-            import unicodedata
+            fixed_name = self._fix_encoding(painting_name)
+            img_path = os.path.join(self.img_dir, art_style, f"{fixed_name}.jpg")
+
+        # Strategy 3: Normalize unicode (NFC)
+        if not os.path.exists(img_path):
             normalized = unicodedata.normalize('NFC', painting_name)
             img_path = os.path.join(self.img_dir, art_style, f"{normalized}.jpg")
         
-        # Strategy 3: Try finding file ignoring encoding
+        # Strategy 4: Fuzzy match in directory (Last resort)
         if not os.path.exists(img_path):
             try:
                 style_dir = os.path.join(self.img_dir, art_style)
                 if os.path.exists(style_dir):
-                    # Find all .jpg files in directory
-                    files = [f for f in os.listdir(style_dir) if f.endswith('.jpg')]
-                    # Try to match by removing special chars
-                    clean_name = ''.join(c for c in painting_name if c.isalnum() or c in '-_')
-                    for f in files:
-                        clean_f = ''.join(c for c in f[:-4] if c.isalnum() or c in '-_')
-                        if clean_name.lower() in clean_f.lower() or clean_f.lower() in clean_name.lower():
-                            img_path = os.path.join(style_dir, f)
-                            break
+                    files = os.listdir(style_dir)
+                    # Tenta encontrar o arquivo mais parecido
+                    matches = difflib.get_close_matches(f"{painting_name}.jpg", files, n=1, cutoff=0.5)
+                    if matches:
+                        img_path = os.path.join(style_dir, matches[0])
             except Exception:
                 pass
         
@@ -144,10 +157,11 @@ class ArtEmisEmotionDataset(Dataset):
             image = Image.open(img_path).convert('RGB')
             image = self.transform(image)
         except Exception as e:
-            # Fallback: imagem preta (silent)
-            image = torch.zeros(3, 224, 224)
-            if self.split == 'train' and idx % 1000 == 0:  # Log only occasionally
-                print(f"⚠️ Skipped image: {painting_name[:50]}... (encoding issue)")
+            # Fallback: pick a random valid image instead of returning zeros/crashing
+            # This preserves batch size and avoids teaching the model "black image = emotion X"
+            print(f"⚠️ Error loading {painting_name}: {str(e)}. Picking random replacement.")
+            rand_idx = random.randint(0, len(self.data) - 1)
+            return self.__getitem__(rand_idx)
         
         # Tokenize text
         text = str(row['utterance'])

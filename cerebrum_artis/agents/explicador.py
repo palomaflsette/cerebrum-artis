@@ -265,7 +265,8 @@ class Explicador:
         model: nn.Module,
         image: torch.Tensor,
         target_layer: nn.Module,
-        emotion_idx: int
+        emotion_idx: int,
+        **kwargs
     ) -> np.ndarray:
         """
         Gera mapa de calor Grad-CAM explicando a predição.
@@ -275,6 +276,7 @@ class Explicador:
             image: Tensor da imagem (C, H, W)
             target_layer: Camada convolucional alvo para Grad-CAM
             emotion_idx: Índice da emoção predita
+            **kwargs: Argumentos adicionais para o modelo (ex: input_ids, attention_mask)
 
         Returns:
             Mapa de calor Grad-CAM (H, W) normalizado entre 0-1
@@ -286,27 +288,60 @@ class Explicador:
         activations = []
 
         def backward_hook(module, grad_input, grad_output):
-            gradients.append(grad_output[0])
+            # grad_output pode ser None em algumas camadas
+            if grad_output[0] is not None:
+                gradients.append(grad_output[0].detach())
 
         def forward_hook(module, input, output):
-            activations.append(output)
+            activations.append(output.detach())
 
         # Registra hooks
         backward_handle = target_layer.register_full_backward_hook(backward_hook)
         forward_handle = target_layer.register_forward_hook(forward_hook)
 
         # Forward pass
-        image = image.unsqueeze(0)  # Adiciona batch dimension
-        output = model(image)
+        image_batch = image.unsqueeze(0)  # Adiciona batch dimension
+        image_batch.requires_grad = True  # Garante que gradientes sejam calculados
+        
+        # Prepara kwargs (adiciona batch dimension se necessário)
+        model_kwargs = {}
+        for k, v in kwargs.items():
+            if isinstance(v, torch.Tensor):
+                # Se já tem batch dim, mantém. Se não, adiciona.
+                if v.dim() == 1:
+                    model_kwargs[k] = v.unsqueeze(0)
+                else:
+                    model_kwargs[k] = v
+            else:
+                model_kwargs[k] = v
+
+        try:
+            # Tenta passar kwargs (para modelos multimodais)
+            output = model(image_batch, **model_kwargs)
+        except TypeError:
+            # Fallback para modelos que só aceitam imagem
+            output = model(image_batch)
+
+        # Se o output for uma tupla (comum em nossos modelos multimodais), pega o primeiro elemento (logits)
+        if isinstance(output, tuple):
+            output = output[0]
 
         # Backward pass para a classe alvo
         model.zero_grad()
         target = output[0, emotion_idx]
-        target.backward()
+        target.backward(retain_graph=True)
 
         # Remove hooks
         backward_handle.remove()
         forward_handle.remove()
+
+        # Verifica se capturamos gradientes
+        if len(gradients) == 0 or len(activations) == 0:
+            raise RuntimeError(
+                f"Grad-CAM hooks não capturaram dados. "
+                f"Gradients: {len(gradients)}, Activations: {len(activations)}. "
+                f"Verifique se target_layer está correto."
+            )
 
         # Calcula Grad-CAM
         grads = gradients[0].cpu().data.numpy()[0]  # (C, H, W)
@@ -380,7 +415,8 @@ class Explicador:
         confidence: float,
         fuzzy_features: Dict[str, float],
         target_layer: Optional[nn.Module] = None,
-        save_path: Optional[str] = None
+        save_path: Optional[str] = None,
+        **kwargs
     ) -> Dict[str, any]:
         """
         Gera explicação completa (textual + visual).
@@ -394,6 +430,7 @@ class Explicador:
             fuzzy_features: Features fuzzy extraídas
             target_layer: Camada para Grad-CAM (se None, usa última conv)
             save_path: Caminho para salvar visualização
+            **kwargs: Argumentos adicionais para o modelo (ex: input_ids, attention_mask)
 
         Returns:
             Dicionário com explicação textual, CAM e visualização
@@ -419,7 +456,8 @@ class Explicador:
             model,
             image_tensor,
             target_layer,
-            emotion_idx
+            emotion_idx,
+            **kwargs
         )
 
         # Cria visualização

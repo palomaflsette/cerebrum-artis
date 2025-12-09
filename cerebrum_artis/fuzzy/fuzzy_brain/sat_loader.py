@@ -1,21 +1,18 @@
 """
-SAT Model Loader - Carrega modelo M2 Transformer treinado
+SAT Model Loader - Carrega modelo Show, Attend and Tell (ResNet + LSTM)
 """
 import torch
 import pickle
 import sys
 from pathlib import Path
 
-# Adiciona paths necessários
-artemis_path = Path(__file__).parent.parent.parent / 'artemis-v2' / 'neural_speaker' / 'm2'
-sys.path.insert(0, str(artemis_path))
+# Adiciona paths necessários para o SAT real
+artemis_sat_path = Path(__file__).parent.parent.parent.parent / 'garbage' / 'old_artemis-v2' / 'neural_speaker' / 'sat'
+sys.path.insert(0, str(artemis_sat_path))
 
-from models.transformer import (
-    MemoryAugmentedEncoder, 
-    MeshedDecoder,
-    ScaledDotProductAttentionMemory, 
-    Transformer
-)
+from artemis.neural_models.show_attend_tell import describe_model
+from artemis.neural_models.resnet_encoder import ResnetEncoder
+from artemis.neural_models.attentive_decoder import AttentiveDecoder
 
 
 class SimpleVocab:
@@ -40,12 +37,12 @@ class SimpleVocab:
 
 class SATModelLoader:
     """
-    Carrega o modelo SAT (M2 Transformer) treinado no ArtEmis.
+    Carrega o modelo SAT (Show, Attend and Tell) treinado no ArtEmis.
+    Usa ResNet encoder + LSTM decoder com attention.
     
     Attributes:
-        model: Transformer model (encoder + decoder)
+        model: SAT model (ResnetEncoder + AttentiveDecoder)
         vocab: Vocabulário de palavras
-        emotion_encoder: Encoder de emoções (se usado)
         device: 'cuda' ou 'cpu'
     """
     
@@ -62,7 +59,7 @@ class SATModelLoader:
         Args:
             checkpoint_path: Caminho para checkpoint (.pt)
             vocab_path: Caminho para vocabulário (.pkl)
-            use_emotion_labels: Se True, carrega emotion encoder
+            use_emotion_labels: Se True, usa emotion grounding
             device: 'cuda' ou 'cpu'
         """
         self.device = device
@@ -71,100 +68,29 @@ class SATModelLoader:
         # 1. Carrega vocabulário
         print(f"📚 Carregando vocabulário de {vocab_path}...")
         
-        # Tenta carregar vocabulário pickle original
         try:
             with open(vocab_path, 'rb') as f:
                 self.vocab = pickle.load(f)
-            print(f"  ✅ Vocabulário original carregado: {len(self.vocab)} tokens")
-        except (ModuleNotFoundError, AttributeError) as e:
-            # Fallback: Extrai vocabulário do checkpoint
-            print(f"  ⚠️  Falha ao carregar vocab pickle (esperado): {e}")
-            print(f"  🔧 Extraindo vocabulário do checkpoint...")
-            
+            print(f"  ✅ Vocabulário carregado: {len(self.vocab)} tokens")
+        except Exception as e:
+            print(f"  ⚠️  Erro ao carregar vocab: {e}")
+            # Fallback: cria vocabulário mínimo
             checkpoint = torch.load(checkpoint_path, map_location='cpu')
-            
-            # Vocabulário está no decoder word_embedding
-            decoder_embedding = checkpoint['model'].get('decoder.word_embedding.weight')
-            if decoder_embedding is not None:
-                vocab_size = decoder_embedding.shape[0]
-                print(f"  📊 Vocab size detectado: {vocab_size}")
-                
-                # Cria vocabulário simplificado
-                word2idx = {
-                    '<pad>': 0,
-                    '<sos>': 1, 
-                    '<eos>': 2,
-                    '<unk>': 3
-                }
-                # Preenche com tokens genéricos
+            decoder_emb = checkpoint['model'].get('decoder.word_embedding.weight')
+            if decoder_emb is not None:
+                vocab_size = decoder_emb.shape[0]
+                word2idx = {f'<pad>': 0, '<sos>': 1, '<eos>': 2, '<unk>': 3}
                 for i in range(4, vocab_size):
                     word2idx[f'token_{i}'] = i
-                
                 idx2word = {v: k for k, v in word2idx.items()}
                 self.vocab = SimpleVocab(word2idx, idx2word)
-                print(f"  ✅ Vocabulário simplificado criado: {len(self.vocab)} tokens")
-            else:
-                raise ValueError("Não foi possível extrair vocab_size do checkpoint!")
+                print(f"  ✅ Vocabulário simplificado: {vocab_size} tokens")
         
-        vocab_size = len(self.vocab)
-        pad_idx = self.vocab.pad
-        bos_idx = self.vocab.sos  # SOS = Start Of Sequence = BOS
-        
-        print(f"  ✅ Vocabulário: {vocab_size} tokens")
-        
-        # 2. Constrói modelo (mesma arquitetura do treinamento)
-        print("🧠 Construindo modelo M2 Transformer...")
-        
-        emotion_dim = 0
-        self.emotion_encoder = None
-        
-        if use_emotion_labels:
-            emotion_dim = 10
-            self.emotion_encoder = torch.nn.Sequential(
-                torch.nn.Linear(9, emotion_dim)
-            )
-        
-        # Encoder: MemoryAugmentedEncoder (M=40 memory slots)
-        encoder = MemoryAugmentedEncoder(
-            N=3,  # 3 layers
-            padding_idx=0,
-            attention_module=ScaledDotProductAttentionMemory,
-            attention_module_kwargs={'m': 40},  # 40 memory slots
-            d_in=2048 + emotion_dim  # ResNet50 features + emotion
-        )
-        
-        # Decoder: MeshedDecoder
-        decoder = MeshedDecoder(
-            vocab_size=vocab_size,
-            max_len=54,
-            N_dec=3,  # 3 decoder layers
-            padding_idx=pad_idx
-        )
-        
-        # Transformer completo
-        self.model = Transformer(bos_idx, encoder, decoder)
-        
-        # 3. Carrega pesos do checkpoint
+        # 2. Carrega checkpoint para inspecionar arquitetura
         print(f"⚙️  Carregando checkpoint de {checkpoint_path}...")
         checkpoint = torch.load(checkpoint_path, map_location='cpu')
         
-        # Carrega state_dict
-        self.model.load_state_dict(checkpoint['model'])
-        
-        if use_emotion_labels and 'emotion_encoder' in checkpoint:
-            self.emotion_encoder.load_state_dict(checkpoint['emotion_encoder'])
-        
-        # Move para device
-        self.model.to(device)
-        if self.emotion_encoder is not None:
-            self.emotion_encoder.to(device)
-        
-        self.model.eval()
-        if self.emotion_encoder is not None:
-            self.emotion_encoder.eval()
-        
-        print(f"  ✅ Modelo carregado! (epoch {checkpoint.get('epoch', '?')})")
-        print(f"  📊 Best CIDEr: {checkpoint.get('best_cider', 'N/A')}")
+        # 3. Cria argumentos para describe_model (necessário para SAT)
     
     @torch.no_grad()
     def generate(
