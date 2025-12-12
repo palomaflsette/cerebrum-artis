@@ -494,7 +494,7 @@ class VisualFeatureExtractor:
         4. Converte para score de similaridade
         
         Args:
-            img_rgb: Imagem RGB
+            img_rgb: Imagem RGB (pode estar em [0,1] ou [0,255])
         
         Returns:
             Simetria normalizada [0, 1] onde 0=assimétrico, 1=simétrico
@@ -517,11 +517,16 @@ class VisualFeatureExtractor:
         diff = np.abs(left_half.astype(float) - right_half_flipped.astype(float))
         mae = np.mean(diff)
         
-        # Converte diferença em similaridade
-        # MAE está em [0, 255], então symmetry em [0, 1]
-        symmetry = 1.0 - (mae / 255.0)
+        # CORRIGIDO: Detecta range da imagem automaticamente
+        max_val = np.max(img_rgb)
+        if max_val <= 1.0:
+            # Imagem em [0, 1] (PIL fallback)
+            symmetry = 1.0 - mae
+        else:
+            # Imagem em [0, 255] (cv2)
+            symmetry = 1.0 - (mae / 255.0)
         
-        return float(symmetry)
+        return float(np.clip(symmetry, 0.0, 1.0))
     
     def _compute_texture_roughness(self, img_gray: np.ndarray) -> float:
         """
@@ -547,15 +552,22 @@ class VisualFeatureExtractor:
         3. Normaliza empiricamente
         
         Args:
-            img_gray: Imagem em escala de cinza
+            img_gray: Imagem em escala de cinza (pode estar em [0,1] ou [0,255])
         
         Returns:
             Aspereza normalizada [0, 1] onde 0=suave, 1=áspero
         """
+        # CORRIGIDO: Converte para uint8 para evitar warning de LBP
+        if img_gray.max() <= 1.0:
+            # Imagem em [0, 1], converte para [0, 255]
+            img_gray_uint8 = (img_gray * 255).astype(np.uint8)
+        else:
+            img_gray_uint8 = img_gray.astype(np.uint8)
+        
         # LBP com raio=1 e 8 pontos (padrão)
         # method='uniform' reduz dimensionalidade
         lbp = feature.local_binary_pattern(
-            img_gray, 
+            img_gray_uint8, 
             P=8,           # 8 vizinhos
             R=1,           # Raio de 1 pixel
             method='uniform'
