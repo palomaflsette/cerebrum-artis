@@ -51,7 +51,7 @@ events.out.tfevents.*
 features/
 embeddings/
 
-data/**
+
 !data/.gitkeep
 !data/README.md
 
@@ -73,13 +73,11 @@ outputs/**
 *.key
 *.crt
 
-*.csv
 *.tsv
 *.parquet
 *.jsonl
 *.db
 *.sqlite
-*.xlsx
 *.xls
 *.hdf5
 *.zip
@@ -89,8 +87,8 @@ outputs/**
 *.jpeg
 
 *.swp
-*.sh
 
+data/
 garbage/
 paper-factory/
 artemis-v2/
